@@ -567,11 +567,11 @@ function showElementEditor(data) {
         <input type="text" id="new-img-url" placeholder="Liitä kuva-URL...">
       </div>
       <div class="ctrl-group img-zoom-wrap">
-        <label>Kuvan zoom</label>
+        <label>Rajaus</label>
         <div class="img-zoom-row">
-          <span style="font-size:0.8rem">🔍−</span>
-          <input type="range" id="img-zoom-slider" min="50" max="200" value="100" step="5">
-          <span style="font-size:0.8rem">🔍+</span>
+          <span style="font-size:0.75rem;color:#6b7280;white-space:nowrap">Koko kuva</span>
+          <input type="range" id="img-zoom-slider" min="50" max="150" value="100" step="5">
+          <span style="font-size:0.75rem;color:#6b7280;white-space:nowrap">Rajattu</span>
           <span class="img-zoom-pct" id="img-zoom-pct">100%</span>
         </div>
       </div>`;
@@ -785,9 +785,19 @@ function applyImgZoom(pct) {
     const doc = document.getElementById('site-iframe').contentDocument;
     const el  = doc.querySelector(selectedEl.selector);
     if (!el) return;
-    const scale = pct / 100;
-    el.style.transform = scale === 1 ? '' : `scale(${scale})`;
-    el.style.transformOrigin = 'center center';
+    if (pct >= 100) {
+      // Rajattu: object-fit cover, ei transform
+      el.style.setProperty('object-fit', 'cover', 'important');
+      el.style.setProperty('width', '100%', 'important');
+      el.style.setProperty('height', '100%', 'important');
+      el.style.removeProperty('transform');
+    } else {
+      // Koko kuva näkyvissä: object-fit contain, skaalattu
+      const scale = pct / 100;
+      el.style.setProperty('object-fit', 'contain', 'important');
+      el.style.setProperty('transform', `scale(${scale})`, 'important');
+      el.style.setProperty('transform-origin', 'center center', 'important');
+    }
   } catch (_) {}
 }
 
