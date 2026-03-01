@@ -566,15 +566,9 @@ function showElementEditor(data) {
         <div class="or-divider">tai</div>
         <input type="text" id="new-img-url" placeholder="Liitä kuva-URL...">
       </div>
-      <div class="ctrl-group img-zoom-wrap">
-        <label>Rajaus</label>
-        <div class="img-zoom-row">
-          <span style="font-size:0.75rem;color:#6b7280;white-space:nowrap">Koko kuva</span>
-          <input type="range" id="img-zoom-slider" min="50" max="150" value="100" step="5">
-          <span style="font-size:0.75rem;color:#6b7280;white-space:nowrap">Rajattu</span>
-          <span class="img-zoom-pct" id="img-zoom-pct">100%</span>
-        </div>
-      </div>`;
+      <p style="font-size:0.78rem;color:#6b7280;margin-top:0.25rem;line-height:1.5;">
+        💡 Jos kuva näyttää väärin rajatulta, ei hätää — lähetyksen yhteydessä kuvasuhde korjataan automaattisesti.
+      </p>`;
 
     document.getElementById('img-upload-trigger').onclick = () => {
       const fi = document.getElementById('img-file-hidden');
@@ -589,9 +583,7 @@ function showElementEditor(data) {
           controls.querySelector('.preview-img-wrap img').src = thumbUrl;
           // Päivitä iframe heti
           applyInIframe(selectedEl.selector, 'image', url);
-          // Nollaa zoom
-          const slider = document.getElementById('img-zoom-slider');
-          if (slider) { slider.value = 100; document.getElementById('img-zoom-pct').textContent = '100%'; applyImgZoom(100); }
+
         } catch (e) {
           alert('Lataus epäonnistui: ' + e.message);
         } finally { hideOverlay(); }
@@ -606,13 +598,6 @@ function showElementEditor(data) {
         controls.querySelector('.preview-img-wrap img').src = url;
         applyInIframe(selectedEl.selector, 'image', url);
       }
-    });
-
-    // Zoom-säädin
-    document.getElementById('img-zoom-slider').addEventListener('input', e => {
-      const pct = parseInt(e.target.value);
-      document.getElementById('img-zoom-pct').textContent = pct + '%';
-      applyImgZoom(pct);
     });
 
   } else {
@@ -776,29 +761,6 @@ async function submitChanges() {
     btn.disabled    = false;
     btn.textContent = 'Lähetä muutokset sivustolle';
   }
-}
-
-// ─── Kuvan zoom iframessa ───────────────────────────────────────
-
-function applyImgZoom(pct) {
-  try {
-    const doc = document.getElementById('site-iframe').contentDocument;
-    const el  = doc.querySelector(selectedEl.selector);
-    if (!el) return;
-    if (pct >= 100) {
-      // Rajattu: object-fit cover, ei transform
-      el.style.setProperty('object-fit', 'cover', 'important');
-      el.style.setProperty('width', '100%', 'important');
-      el.style.setProperty('height', '100%', 'important');
-      el.style.removeProperty('transform');
-    } else {
-      // Koko kuva näkyvissä: object-fit contain, skaalattu
-      const scale = pct / 100;
-      el.style.setProperty('object-fit', 'contain', 'important');
-      el.style.setProperty('transform', `scale(${scale})`, 'important');
-      el.style.setProperty('transform-origin', 'center center', 'important');
-    }
-  } catch (_) {}
 }
 
 // Enter ID-kentässä
