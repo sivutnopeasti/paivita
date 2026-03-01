@@ -302,14 +302,44 @@ function hideOverlay() {
   document.getElementById('uploadOverlay').classList.remove('active');
 }
 
+async function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > h) { if (w > maxWidth)  { h *= maxWidth  / w; w = maxWidth;  } }
+        else        { if (h > maxHeight) { w *= maxHeight / h; h = maxHeight; } }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => {
+          if (blob) resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+          else reject(new Error('Pakkaus epäonnistui'));
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Palauttaa { url, thumbUrl } – thumbUrl previewihin, url sivustolle
 async function uploadToImgBB(file) {
+  const compressed = await compressImage(file);
   const fd = new FormData();
-  fd.append('image', file);
+  fd.append('image', compressed);
   const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
     method: 'POST', body: fd,
   });
   const data = await res.json();
-  if (data.success) return data.data.url;
+  if (data.success) return {
+    url:      data.data.url,
+    thumbUrl: data.data.thumb?.url || data.data.display_url || data.data.url,
+  };
   throw new Error(data.error?.message || 'ImgBB-virhe');
 }
 
@@ -457,7 +487,7 @@ function buildImageCard(role, img, label) {
   card.id = `imgcard-${role}`;
   card.innerHTML = `
     <div class="img-card-thumb">
-      <img src="${img.url}" alt="${img.alt || ''}" onerror="this.style.display='none'">
+      <img src="${img.url}" alt="${img.alt || ''}" loading="lazy" onerror="this.style.display='none'">
       <button class="img-remove-btn" title="Poista kuva" onclick="removeImage('${role}')">✕</button>
     </div>
     <div class="img-card-body">
@@ -516,11 +546,11 @@ function openReplaceUpload(role) {
     if (!fi.files[0]) return;
     try {
       showOverlay('Ladataan kuvaa...');
-      const url = await uploadToImgBB(fi.files[0]);
+      const { url, thumbUrl } = await uploadToImgBB(fi.files[0]);
       imageState[role].state = url;
       const card  = document.getElementById(`imgcard-${role}`);
       const imgEl = card.querySelector('img');
-      if (imgEl) { imgEl.src = url; imgEl.style.display = ''; }
+      if (imgEl) { imgEl.src = thumbUrl; imgEl.style.display = ''; }
       const urlInput = document.getElementById(`url-input-${role}`);
       if (urlInput) urlInput.value = url;
       card.classList.remove('removed');
@@ -549,8 +579,8 @@ function triggerAddImage() {
       if (!fi.files[0]) return;
       try {
         showOverlay('Ladataan kuvaa...');
-        const url = await uploadToImgBB(fi.files[0]);
-        addNewImageToGrid(role, url);
+        const { url, thumbUrl } = await uploadToImgBB(fi.files[0]);
+        addNewImageToGrid(role, url, thumbUrl);
       } catch (e) {
         alert('Kuvan lataus epäonnistui: ' + e.message);
       } finally {
@@ -570,8 +600,8 @@ function triggerAddImageWithFile(file) {
   openRoleModal(available, async role => {
     try {
       showOverlay('Ladataan kuvaa...');
-      const url = await uploadToImgBB(file);
-      addNewImageToGrid(role, url);
+      const { url, thumbUrl } = await uploadToImgBB(file);
+      addNewImageToGrid(role, url, thumbUrl);
     } catch (e) {
       alert('Kuvan lataus epäonnistui: ' + e.message);
     } finally {
@@ -580,20 +610,21 @@ function triggerAddImageWithFile(file) {
   });
 }
 
-function addNewImageToGrid(role, url) {
+function addNewImageToGrid(role, url, thumbUrl) {
   newImages = newImages.filter(x => x.role !== role);
   newImages.push({ url, role });
 
   const existingNew = document.getElementById(`newcard-${role}`);
   if (existingNew) existingNew.remove();
 
-  const label = ROLE_LABELS[role] || role;
-  const card  = document.createElement('div');
+  const label   = ROLE_LABELS[role] || role;
+  const preview = thumbUrl || url;
+  const card    = document.createElement('div');
   card.className = 'img-card img-new-card';
   card.id = `newcard-${role}`;
   card.innerHTML = `
     <div class="img-card-thumb">
-      <img src="${url}" alt="" onerror="this.style.display='none'">
+      <img src="${preview}" alt="" onerror="this.style.display='none'">
       <span class="img-new-badge">Uusi</span>
       <button class="img-remove-btn" title="Peruuta" onclick="cancelNewImage('${role}')">✕</button>
     </div>
