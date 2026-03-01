@@ -178,34 +178,27 @@
     .status.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 
     /* ── Preview ── */
-    .preview-wrap { flex: 1; display: flex; flex-direction: column; background: #e5e7eb; }
-    .zoom-bar {
-      flex-shrink: 0; height: 36px; background: #f1f5f9;
-      border-bottom: 1px solid #e2e8f0;
-      display: flex; align-items: center; gap: 4px; padding: 0 10px;
-    }
-    .zoom-btn {
-      width: 28px; height: 26px; border: 1px solid #cbd5e1;
-      border-radius: 5px; background: #fff; color: #374151;
-      font-size: 1rem; line-height: 1; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.1s;
-    }
-    .zoom-btn:hover { background: #e0e7ff; border-color: #818cf8; color: #4f46e5; }
-    .zoom-level {
-      min-width: 42px; text-align: center;
-      font-size: 0.78rem; font-weight: 600; color: #475569;
-    }
-    .zoom-sep { width: 1px; height: 18px; background: #e2e8f0; margin: 0 4px; }
-    .preview-inner { flex: 1; position: relative; overflow: hidden; }
+    .preview-wrap { flex: 1; position: relative; background: #e5e7eb; }
     .preview-loading {
       position: absolute; inset: 0; background: #e5e7eb;
       display: flex; align-items: center; justify-content: center;
       font-size: 0.9rem; color: #6b7280; z-index: 2;
     }
-    #site-iframe {
-      border: none; display: block;
-      transform-origin: top left;
+    #site-iframe { width: 100%; height: 100%; border: none; display: block; }
+
+    /* ── Image zoom slider ── */
+    .img-zoom-wrap {
+      margin-top: 0.5rem;
+    }
+    .img-zoom-row {
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .img-zoom-row input[type=range] {
+      flex: 1; accent-color: #4f46e5;
+    }
+    .img-zoom-pct {
+      min-width: 38px; text-align: right;
+      font-size: 0.78rem; font-weight: 600; color: #374151;
     }
 
     /* ── Upload overlay ── */
@@ -313,19 +306,8 @@
 
   <!-- Preview -->
   <div class="preview-wrap">
-    <div class="zoom-bar">
-      <button class="zoom-btn" onclick="changeZoom(-0.1)" title="Loitonna">−</button>
-      <span class="zoom-level" id="zoom-level">100%</span>
-      <button class="zoom-btn" onclick="changeZoom(+0.1)" title="Lähennä">+</button>
-      <div class="zoom-sep"></div>
-      <button class="zoom-btn" onclick="setZoom(0.5)" title="50%" style="width:auto;padding:0 6px;font-size:0.72rem;">50%</button>
-      <button class="zoom-btn" onclick="setZoom(0.75)" title="75%" style="width:auto;padding:0 6px;font-size:0.72rem;">75%</button>
-      <button class="zoom-btn" onclick="setZoom(1)" title="100%" style="width:auto;padding:0 6px;font-size:0.72rem;">100%</button>
-    </div>
-    <div class="preview-inner">
-      <div class="preview-loading" id="preview-loading">Ladataan sivustoa...</div>
-      <iframe id="site-iframe" src="about:blank"></iframe>
-    </div>
+    <div class="preview-loading" id="preview-loading">Ladataan sivustoa...</div>
+    <iframe id="site-iframe" src="about:blank"></iframe>
   </div>
 
 </div>
@@ -583,6 +565,15 @@ function showElementEditor(data) {
         <button class="upload-btn" id="img-upload-trigger">↑ Lataa tiedosto</button>
         <div class="or-divider">tai</div>
         <input type="text" id="new-img-url" placeholder="Liitä kuva-URL...">
+      </div>
+      <div class="ctrl-group img-zoom-wrap">
+        <label>Kuvan zoom</label>
+        <div class="img-zoom-row">
+          <span style="font-size:0.8rem">🔍−</span>
+          <input type="range" id="img-zoom-slider" min="50" max="200" value="100" step="5">
+          <span style="font-size:0.8rem">🔍+</span>
+          <span class="img-zoom-pct" id="img-zoom-pct">100%</span>
+        </div>
       </div>`;
 
     document.getElementById('img-upload-trigger').onclick = () => {
@@ -598,6 +589,9 @@ function showElementEditor(data) {
           controls.querySelector('.preview-img-wrap img').src = thumbUrl;
           // Päivitä iframe heti
           applyInIframe(selectedEl.selector, 'image', url);
+          // Nollaa zoom
+          const slider = document.getElementById('img-zoom-slider');
+          if (slider) { slider.value = 100; document.getElementById('img-zoom-pct').textContent = '100%'; applyImgZoom(100); }
         } catch (e) {
           alert('Lataus epäonnistui: ' + e.message);
         } finally { hideOverlay(); }
@@ -612,6 +606,13 @@ function showElementEditor(data) {
         controls.querySelector('.preview-img-wrap img').src = url;
         applyInIframe(selectedEl.selector, 'image', url);
       }
+    });
+
+    // Zoom-säädin
+    document.getElementById('img-zoom-slider').addEventListener('input', e => {
+      const pct = parseInt(e.target.value);
+      document.getElementById('img-zoom-pct').textContent = pct + '%';
+      applyImgZoom(pct);
     });
 
   } else {
@@ -777,23 +778,18 @@ async function submitChanges() {
   }
 }
 
-// ─── Zoom ──────────────────────────────────────────────────────
+// ─── Kuvan zoom iframessa ───────────────────────────────────────
 
-let currentZoom = 1.0;
-
-function setZoom(level) {
-  currentZoom = Math.max(0.25, Math.min(2.0, Math.round(level * 100) / 100));
-  const iframe = document.getElementById('site-iframe');
-  const inner  = iframe.parentElement;
-  iframe.style.width  = (inner.offsetWidth  / currentZoom) + 'px';
-  iframe.style.height = (inner.offsetHeight / currentZoom) + 'px';
-  iframe.style.transform = `scale(${currentZoom})`;
-  document.getElementById('zoom-level').textContent = Math.round(currentZoom * 100) + '%';
+function applyImgZoom(pct) {
+  try {
+    const doc = document.getElementById('site-iframe').contentDocument;
+    const el  = doc.querySelector(selectedEl.selector);
+    if (!el) return;
+    const scale = pct / 100;
+    el.style.transform = scale === 1 ? '' : `scale(${scale})`;
+    el.style.transformOrigin = 'center center';
+  } catch (_) {}
 }
-
-function changeZoom(delta) { setZoom(currentZoom + delta); }
-
-window.addEventListener('resize', () => { if (currentZoom !== 1) setZoom(currentZoom); });
 
 // Enter ID-kentässä
 document.getElementById('site-id-input').addEventListener('keydown', e => {
