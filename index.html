@@ -25,12 +25,12 @@
     label { display: block; font-size: 0.85rem; font-weight: 600;
       color: #555; margin-bottom: 0.35rem; }
 
-    input[type="text"], textarea {
+    input[type="text"], textarea, select {
       width: 100%; padding: 0.65rem 0.875rem; border: 1.5px solid #ddd;
       border-radius: 8px; font-size: 0.95rem; font-family: inherit;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s; background: #fff;
     }
-    input[type="text"]:focus, textarea:focus {
+    input[type="text"]:focus, textarea:focus, select:focus {
       outline: none; border-color: #4f46e5;
     }
     textarea { resize: vertical; min-height: 80px; }
@@ -45,6 +45,8 @@
     .btn-primary { background: #4f46e5; color: #fff; }
     .btn-primary:hover { background: #4338ca; }
     .btn-primary:disabled { background: #a5b4fc; cursor: not-allowed; }
+    .btn-secondary { background: #f3f4f6; color: #374151; }
+    .btn-secondary:hover { background: #e5e7eb; }
 
     .status {
       padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.9rem;
@@ -56,26 +58,96 @@
 
     #site-content { display: none; }
 
+    /* === Kuvagrid === */
     .images-grid {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
       gap: 1rem; margin-top: 0.5rem;
     }
+
     .img-card {
-      border: 1.5px solid #e5e7eb; border-radius: 10px; overflow: hidden;
-      background: #f9fafb;
+      border: 1.5px solid #e5e7eb; border-radius: 10px; overflow: visible;
+      background: #f9fafb; position: relative;
     }
-    .img-card img {
-      width: 100%; height: 110px; object-fit: cover; display: block;
-    }
-    .img-card-body { padding: 0.5rem; }
-    .img-role { font-size: 0.75rem; font-weight: 700; color: #4f46e5;
-      text-transform: uppercase; letter-spacing: 0.05em; }
-    .img-card input {
-      width: 100%; margin-top: 0.35rem; padding: 0.4rem 0.5rem;
-      font-size: 0.8rem; border: 1px solid #ddd; border-radius: 6px;
+    .img-card.removed { opacity: 0.4; }
+    .img-card.removed::after {
+      content: 'POISTETAAN'; position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.7rem; font-weight: 800; color: #b91c1c;
+      background: rgba(254,242,242,0.85); border-radius: 10px;
+      letter-spacing: 0.06em; pointer-events: none;
     }
 
+    .img-card-thumb { position: relative; overflow: hidden; border-radius: 8px 8px 0 0; }
+    .img-card-thumb img {
+      width: 100%; height: 110px; object-fit: cover; display: block;
+    }
+    .img-remove-btn {
+      position: absolute; top: 6px; right: 6px;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: rgba(0,0,0,0.55); color: #fff; border: none;
+      font-size: 0.85rem; cursor: pointer; display: flex;
+      align-items: center; justify-content: center; padding: 0;
+      line-height: 1; transition: background 0.15s;
+    }
+    .img-remove-btn:hover { background: #b91c1c; }
+    .img-undo-btn {
+      position: absolute; top: 6px; right: 6px;
+      padding: 3px 9px; border-radius: 20px;
+      background: #4f46e5; color: #fff; border: none;
+      font-size: 0.7rem; font-weight: 700; cursor: pointer;
+    }
+
+    .img-card-body { padding: 0.5rem; }
+    .img-role {
+      font-size: 0.75rem; font-weight: 700; color: #4f46e5;
+      text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;
+    }
+
+    .img-replace-row { display: flex; gap: 0.35rem; margin-top: 0.35rem; }
+    .img-replace-row input {
+      flex: 1; padding: 0.35rem 0.5rem;
+      font-size: 0.75rem; border: 1px solid #ddd; border-radius: 6px; width: auto;
+    }
+    .img-upload-btn {
+      padding: 0.35rem 0.6rem; border: 1px solid #ddd; border-radius: 6px;
+      background: #f3f4f6; cursor: pointer; font-size: 0.8rem;
+      white-space: nowrap; font-weight: 700; color: #374151;
+    }
+    .img-upload-btn:hover { background: #e5e7eb; }
+
+    /* Lisää uusi kuva -kortti */
+    .img-add-card {
+      border: 1.5px dashed #c7d2fe; border-radius: 10px;
+      background: #fafafe; min-height: 155px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 0.4rem; cursor: pointer; transition: border-color 0.2s, background 0.2s;
+      padding: 1rem;
+    }
+    .img-add-card:hover { border-color: #4f46e5; background: #eef2ff; }
+    .img-add-card .add-icon { font-size: 1.8rem; color: #818cf8; }
+    .img-add-card span { font-size: 0.8rem; color: #6366f1; font-weight: 600; }
+    .img-add-card small { font-size: 0.7rem; color: #9ca3af; text-align: center; line-height: 1.4; }
+
+    /* Uusi kuva -kortti */
+    .img-new-card { border-color: #a5b4fc; background: #eef2ff; }
+    .img-new-badge {
+      position: absolute; top: 6px; left: 6px;
+      background: #4f46e5; color: #fff; font-size: 0.65rem;
+      font-weight: 700; padding: 2px 6px; border-radius: 10px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+
+    /* === Tekstit === */
     .field-row { margin-bottom: 1rem; }
+    .field-row label { font-size: 0.82rem; font-weight: 600; color: #374151; margin-bottom: 0.3rem; }
+
+    .section-label {
+      font-size: 0.85rem; font-weight: 700; color: #1a1a2e;
+      margin-bottom: 0.75rem; padding-bottom: 0.4rem;
+      border-bottom: 1.5px solid #e5e7eb;
+    }
+
     .submit-row { margin-top: 1.5rem; }
 
     .spinner {
@@ -85,9 +157,68 @@
       vertical-align: middle; margin-right: 6px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Upload overlay */
+    .upload-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      display: none; align-items: center; justify-content: center; z-index: 100;
+    }
+    .upload-overlay.active { display: flex; }
+    .upload-box {
+      background: #fff; border-radius: 12px; padding: 2rem 2.5rem;
+      text-align: center; min-width: 220px;
+    }
+    .upload-box .upload-spinner {
+      display: inline-block; width: 28px; height: 28px;
+      border: 3px solid #e5e7eb; border-top-color: #4f46e5;
+      border-radius: 50%; animation: spin 0.6s linear infinite;
+    }
+    .upload-box p { margin-top: 1rem; color: #374151; font-size: 0.95rem; }
+
+    /* Roolivalinta-modal */
+    .role-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      display: none; align-items: center; justify-content: center; z-index: 200;
+    }
+    .role-modal-overlay.active { display: flex; }
+    .role-modal {
+      background: #fff; border-radius: 12px; padding: 1.75rem;
+      min-width: 280px; max-width: 340px;
+    }
+    .role-modal h3 { font-size: 1rem; color: #1a1a2e; margin-bottom: 1rem; }
+    .role-option {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.65rem 0.875rem; border: 1.5px solid #e5e7eb; border-radius: 8px;
+      margin-bottom: 0.5rem; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    }
+    .role-option:hover { border-color: #4f46e5; background: #eef2ff; }
+    .role-option span { font-size: 0.9rem; font-weight: 600; color: #374151; }
+    .role-modal-cancel {
+      width: 100%; margin-top: 0.5rem; padding: 0.6rem;
+      background: #f3f4f6; border: none; border-radius: 8px;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer; color: #6b7280;
+    }
+    .role-modal-cancel:hover { background: #e5e7eb; }
   </style>
 </head>
 <body>
+
+<!-- Upload overlay -->
+<div class="upload-overlay" id="uploadOverlay">
+  <div class="upload-box">
+    <div class="upload-spinner"></div>
+    <p id="uploadOverlayText">Ladataan kuvaa...</p>
+  </div>
+</div>
+
+<!-- Roolivalintamodal -->
+<div class="role-modal-overlay" id="roleModalOverlay">
+  <div class="role-modal">
+    <h3>Valitse kuvan rooli</h3>
+    <div id="roleOptionsList"></div>
+    <button class="role-modal-cancel" onclick="closeRoleModal()">Peruuta</button>
+  </div>
+</div>
 
 <div class="topbar">Nopeatsivut – Sivuston päivitys</div>
 
@@ -106,25 +237,27 @@
     <div class="status" id="search-status"></div>
   </div>
 
-  <!-- Vaihe 2: Muokkauskenttä (näytetään haun jälkeen) -->
+  <!-- Vaihe 2: Muokkauskenttä -->
   <div id="site-content">
     <div class="card">
       <h2 id="site-title">Sivusto ladattu</h2>
 
       <!-- Kuvat -->
       <div id="images-section" style="display:none">
-        <label style="margin-bottom:0.5rem;">Kuvat – liitä uusi URL jos haluat vaihtaa</label>
+        <div class="section-label">Kuvat</div>
         <div class="images-grid" id="images-grid"></div>
+        <!-- Piilotettu file-input yhteiskäyttöön -->
+        <input type="file" id="img-file-hidden" accept="image/*" style="display:none">
       </div>
 
       <!-- Tekstit -->
-      <div id="texts-section" style="display:none;margin-top:1.5rem;">
-        <label style="margin-bottom:0.5rem;">Avaintekstit</label>
+      <div id="texts-section" style="display:none;margin-top:1.75rem;">
+        <div class="section-label">Tekstit ja otsikot</div>
         <div id="texts-fields"></div>
       </div>
 
       <!-- Vapaa muutospyyntö -->
-      <div class="field-row" style="margin-top:1.5rem;">
+      <div class="field-row" style="margin-top:1.75rem;">
         <label for="free-text">Muut muutokset (vapaa teksti)</label>
         <textarea id="free-text" placeholder="Esim: Muuta aukioloajat ma–pe 8–16. Lisää uusi palvelu: Lattiaremontti 85 €/m²."></textarea>
       </div>
@@ -140,15 +273,74 @@
 
 <script>
 const WORKER_URL = 'https://paivita.sivutnopeasti.workers.dev';
-const GH_ORG    = 'sivutnopeasti';
+const GH_ORG     = 'sivutnopeasti';
+const IMGBB_KEY  = '%%PIC_API%%';
 
 let currentConfig = null;
+
+// { [role]: { original: {url,alt}, state: 'keep'|'remove'|'<newUrl>' } }
+let imageState = {};
+// [{ url, role }] – uudet lisätyt kuvat
+let newImages  = [];
+
+// Roolivalinta-callback
+let roleModalCallback = null;
+
+// ─── Apufunktiot ───────────────────────────────────────────────
 
 function showStatus(el, type, msg) {
   el.className = 'status ' + type;
   el.textContent = msg;
   el.style.display = 'block';
 }
+
+function showOverlay(text) {
+  document.getElementById('uploadOverlayText').textContent = text || 'Ladataan kuvaa...';
+  document.getElementById('uploadOverlay').classList.add('active');
+}
+function hideOverlay() {
+  document.getElementById('uploadOverlay').classList.remove('active');
+}
+
+async function uploadToImgBB(file) {
+  const fd = new FormData();
+  fd.append('image', file);
+  const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
+    method: 'POST', body: fd,
+  });
+  const data = await res.json();
+  if (data.success) return data.data.url;
+  throw new Error(data.error?.message || 'ImgBB-virhe');
+}
+
+// ─── Roolivalintamodal ─────────────────────────────────────────
+
+const ROLE_LABELS = {
+  logo: 'Logo', hero: 'Hero-kuva', team: 'Tiimikuva',
+  'gallery-1': 'Galleriakuva 1', 'gallery-2': 'Galleriakuva 2',
+  'gallery-3': 'Galleriakuva 3',
+};
+
+function openRoleModal(availableRoles, callback) {
+  roleModalCallback = callback;
+  const list = document.getElementById('roleOptionsList');
+  list.innerHTML = '';
+  availableRoles.forEach(role => {
+    const div = document.createElement('div');
+    div.className = 'role-option';
+    div.innerHTML = `<span>${ROLE_LABELS[role] || role}</span>`;
+    div.onclick = () => { closeRoleModal(); callback(role); };
+    list.appendChild(div);
+  });
+  document.getElementById('roleModalOverlay').classList.add('active');
+}
+
+function closeRoleModal() {
+  document.getElementById('roleModalOverlay').classList.remove('active');
+  roleModalCallback = null;
+}
+
+// ─── Sivuston haku ─────────────────────────────────────────────
 
 async function loadSite() {
   const siteId = document.getElementById('site-id-input').value.trim();
@@ -162,7 +354,6 @@ async function loadSite() {
   showStatus(status, 'info', 'Etsitään sivustoa...');
 
   try {
-    // Hae repo GitHub API:sta tunnisteen perusteella
     const searchRes = await fetch(
       `https://api.github.com/search/repositories?q=org:${GH_ORG}+${siteId}+in:name&per_page=1`
     );
@@ -174,14 +365,15 @@ async function loadSite() {
     }
 
     const repoName = searchData.items[0].name;
-
-    // Hae site-config.json
     const cfgRes = await fetch(
       `https://raw.githubusercontent.com/${GH_ORG}/${repoName}/main/site-config.json`
     );
     if (!cfgRes.ok) throw new Error('site-config.json ei löydy');
     currentConfig = await cfgRes.json();
     currentConfig._repoName = repoName;
+
+    imageState = {};
+    newImages  = [];
 
     renderEditor(currentConfig);
     showStatus(status, 'ok', '✓ Sivusto löytyi: ' + currentConfig.company);
@@ -196,63 +388,249 @@ async function loadSite() {
   }
 }
 
+// ─── Editorin rakentaminen ─────────────────────────────────────
+
 function renderEditor(config) {
   document.getElementById('site-title').textContent = config.company + ' – muokkaa sivustoa';
 
-  // Kuvat
+  // --- Kuvat ---
   const images = config.images || {};
-  const grid = document.getElementById('images-grid');
+  const grid   = document.getElementById('images-grid');
   grid.innerHTML = '';
-  const roleLabels = {
-    logo: 'Logo', hero: 'Hero-kuva', team: 'Tiimikuva',
-  };
-  Object.entries(images).forEach(([role, img]) => {
-    const label = roleLabels[role] || role.replace('-', ' ');
-    grid.innerHTML += `
-      <div class="img-card">
-        <img src="${img.url}" alt="${img.alt}" onerror="this.style.display='none'">
-        <div class="img-card-body">
-          <div class="img-role">${label}</div>
-          <input type="text" data-role="${role}" data-old-url="${img.url}"
-            placeholder="Uusi kuva-URL (jätä tyhjäksi = ei muutosta)" />
-        </div>
-      </div>`;
-  });
-  if (Object.keys(images).length > 0) {
-    document.getElementById('images-section').style.display = 'block';
-  }
 
-  // Tekstit
-  const texts = config.texts || {};
+  Object.entries(images).forEach(([role, img]) => {
+    imageState[role] = { original: img, state: 'keep' };
+    const label = ROLE_LABELS[role] || role.replace(/-/g, ' ');
+    grid.appendChild(buildImageCard(role, img, label));
+  });
+
+  // "Lisää kuva" -kortti
+  const addCard = document.createElement('div');
+  addCard.className = 'img-add-card';
+  addCard.id = 'img-add-card';
+  addCard.innerHTML = `
+    <div class="add-icon">＋</div>
+    <span>Lisää uusi kuva</span>
+    <small>Klikkaa tai raahaa tiedosto tähän</small>`;
+  addCard.addEventListener('click', () => triggerAddImage());
+  addCard.addEventListener('dragover', e => { e.preventDefault(); addCard.style.borderColor = '#4f46e5'; });
+  addCard.addEventListener('dragleave', () => { addCard.style.borderColor = ''; });
+  addCard.addEventListener('drop', e => {
+    e.preventDefault(); addCard.style.borderColor = '';
+    const file = e.dataTransfer.files[0];
+    if (file) triggerAddImageWithFile(file);
+  });
+  grid.appendChild(addCard);
+
+  document.getElementById('images-section').style.display = 'block';
+
+  // --- Tekstit (kaikki) ---
+  const texts   = config.texts || {};
   const textsEl = document.getElementById('texts-fields');
   textsEl.innerHTML = '';
-  const textLabels = { h1: 'Pääotsikko', hero_p: 'Esittelyteksti' };
+
+  const textLabels = {
+    h1: 'Pääotsikko (H1)', hero_p: 'Esittelyteksti (hero)',
+  };
+  for (let i = 1; i <= 6; i++) textLabels[`h2_${i}`] = `Alaotsikko ${i} (H2)`;
+
   Object.entries(texts).forEach(([key, val]) => {
-    if (key.startsWith('h2_')) return; // näytetään vain tärkeimmät
     const label = textLabels[key] || key;
-    textsEl.innerHTML += `
-      <div class="field-row">
-        <label>${label}</label>
-        <textarea data-text-key="${key}" rows="2">${val}</textarea>
-      </div>`;
+    const row = document.createElement('div');
+    row.className = 'field-row';
+    row.innerHTML = `
+      <label>${label}</label>
+      <textarea data-text-key="${key}" rows="2">${val}</textarea>`;
+    textsEl.appendChild(row);
   });
+
   if (Object.keys(texts).length > 0) {
     document.getElementById('texts-section').style.display = 'block';
   }
 }
 
+// ─── Kuvakortin rakentaminen ───────────────────────────────────
+
+function buildImageCard(role, img, label) {
+  const card = document.createElement('div');
+  card.className = 'img-card';
+  card.id = `imgcard-${role}`;
+  card.innerHTML = `
+    <div class="img-card-thumb">
+      <img src="${img.url}" alt="${img.alt || ''}" onerror="this.style.display='none'">
+      <button class="img-remove-btn" title="Poista kuva" onclick="removeImage('${role}')">✕</button>
+    </div>
+    <div class="img-card-body">
+      <div class="img-role">${label}</div>
+      <div class="img-replace-row">
+        <input type="text" placeholder="Vaihda URL…" id="url-input-${role}"
+          onblur="applyUrlReplace('${role}')">
+        <button class="img-upload-btn" title="Lataa tiedosto" onclick="openReplaceUpload('${role}')">↑</button>
+      </div>
+    </div>`;
+  return card;
+}
+
+// ─── Poisto / peruutus ─────────────────────────────────────────
+
+function removeImage(role) {
+  imageState[role].state = 'remove';
+  const card = document.getElementById(`imgcard-${role}`);
+  card.classList.add('removed');
+  const btn = card.querySelector('.img-remove-btn');
+  btn.className = 'img-undo-btn';
+  btn.textContent = 'Peruuta';
+  btn.onclick = () => undoRemove(role);
+}
+
+function undoRemove(role) {
+  imageState[role].state = 'keep';
+  const card = document.getElementById(`imgcard-${role}`);
+  card.classList.remove('removed');
+  const btn = card.querySelector('.img-undo-btn');
+  btn.className = 'img-remove-btn';
+  btn.textContent = '✕';
+  btn.title = 'Poista kuva';
+  btn.onclick = () => removeImage(role);
+}
+
+// ─── URL-vaihto ────────────────────────────────────────────────
+
+function applyUrlReplace(role) {
+  const input = document.getElementById(`url-input-${role}`);
+  const url   = input.value.trim();
+  if (!url) return;
+  imageState[role].state = url;
+  const card  = document.getElementById(`imgcard-${role}`);
+  const imgEl = card.querySelector('img');
+  if (imgEl) { imgEl.src = url; imgEl.style.display = ''; }
+  card.classList.remove('removed');
+}
+
+// ─── Tiedostolataus olemassa olevaan rooliin ───────────────────
+
+function openReplaceUpload(role) {
+  const fi = document.getElementById('img-file-hidden');
+  fi.value = '';
+  fi.onchange = async () => {
+    if (!fi.files[0]) return;
+    try {
+      showOverlay('Ladataan kuvaa...');
+      const url = await uploadToImgBB(fi.files[0]);
+      imageState[role].state = url;
+      const card  = document.getElementById(`imgcard-${role}`);
+      const imgEl = card.querySelector('img');
+      if (imgEl) { imgEl.src = url; imgEl.style.display = ''; }
+      const urlInput = document.getElementById(`url-input-${role}`);
+      if (urlInput) urlInput.value = url;
+      card.classList.remove('removed');
+    } catch (e) {
+      alert('Kuvan lataus epäonnistui: ' + e.message);
+    } finally {
+      hideOverlay();
+    }
+  };
+  fi.click();
+}
+
+// ─── Uuden kuvan lisäys ────────────────────────────────────────
+
+function triggerAddImage() {
+  // Kysy ensin rooli, sitten avaa file-input
+  const available = Object.keys(ROLE_LABELS).filter(r => !imageState[r] && !newImages.find(x => x.role === r));
+  if (available.length === 0) {
+    alert('Kaikki kuvaroolit ovat käytössä. Vaihda tai poista olemassa olevia kuvia.');
+    return;
+  }
+  openRoleModal(available, role => {
+    const fi = document.getElementById('img-file-hidden');
+    fi.value = '';
+    fi.onchange = async () => {
+      if (!fi.files[0]) return;
+      try {
+        showOverlay('Ladataan kuvaa...');
+        const url = await uploadToImgBB(fi.files[0]);
+        addNewImageToGrid(role, url);
+      } catch (e) {
+        alert('Kuvan lataus epäonnistui: ' + e.message);
+      } finally {
+        hideOverlay();
+      }
+    };
+    fi.click();
+  });
+}
+
+function triggerAddImageWithFile(file) {
+  const available = Object.keys(ROLE_LABELS).filter(r => !imageState[r] && !newImages.find(x => x.role === r));
+  if (available.length === 0) {
+    alert('Kaikki kuvaroolit ovat käytössä.');
+    return;
+  }
+  openRoleModal(available, async role => {
+    try {
+      showOverlay('Ladataan kuvaa...');
+      const url = await uploadToImgBB(file);
+      addNewImageToGrid(role, url);
+    } catch (e) {
+      alert('Kuvan lataus epäonnistui: ' + e.message);
+    } finally {
+      hideOverlay();
+    }
+  });
+}
+
+function addNewImageToGrid(role, url) {
+  newImages = newImages.filter(x => x.role !== role);
+  newImages.push({ url, role });
+
+  const existingNew = document.getElementById(`newcard-${role}`);
+  if (existingNew) existingNew.remove();
+
+  const label = ROLE_LABELS[role] || role;
+  const card  = document.createElement('div');
+  card.className = 'img-card img-new-card';
+  card.id = `newcard-${role}`;
+  card.innerHTML = `
+    <div class="img-card-thumb">
+      <img src="${url}" alt="" onerror="this.style.display='none'">
+      <span class="img-new-badge">Uusi</span>
+      <button class="img-remove-btn" title="Peruuta" onclick="cancelNewImage('${role}')">✕</button>
+    </div>
+    <div class="img-card-body">
+      <div class="img-role">${label}</div>
+    </div>`;
+
+  const addCard = document.getElementById('img-add-card');
+  addCard.parentNode.insertBefore(card, addCard);
+}
+
+function cancelNewImage(role) {
+  newImages = newImages.filter(x => x.role !== role);
+  const card = document.getElementById(`newcard-${role}`);
+  if (card) card.remove();
+}
+
+// ─── Muutosten lähetys ─────────────────────────────────────────
+
 async function submitUpdate() {
   const btn    = document.getElementById('submit-btn');
   const status = document.getElementById('submit-status');
 
-  // Kerää kuvamuutokset
   const imageChanges = {};
-  document.querySelectorAll('#images-grid input[data-role]').forEach(input => {
-    const newUrl = input.value.trim();
-    if (newUrl) imageChanges[input.dataset.role] = { old: input.dataset.oldUrl, new: newUrl };
+
+  Object.entries(imageState).forEach(([role, s]) => {
+    if (s.state === 'remove') {
+      imageChanges[role] = { old: s.original.url, new: 'POISTA' };
+    } else if (s.state !== 'keep') {
+      imageChanges[role] = { old: s.original.url, new: s.state };
+    }
   });
 
-  // Kerää tekstimuutokset
+  newImages.forEach(({ url, role }) => {
+    imageChanges[role] = { old: null, new: url };
+  });
+
   const textChanges = {};
   document.querySelectorAll('#texts-fields textarea[data-text-key]').forEach(ta => {
     const original = (currentConfig.texts || {})[ta.dataset.textKey] || '';
@@ -301,7 +679,6 @@ async function submitUpdate() {
   }
 }
 
-// Enter-näppäin ID-kentässä
 document.getElementById('site-id-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') loadSite();
 });
