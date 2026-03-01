@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Päivitä sivustosi – Nopeatsivut</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #1a1a1a; }
+
+    .topbar {
+      background: #1a1a2e; color: #fff; padding: 1rem 1.5rem;
+      font-weight: 700; font-size: 1.1rem; letter-spacing: 0.02em;
+    }
+
+    .container { max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+
+    .card {
+      background: #fff; border-radius: 12px; padding: 2rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08); margin-bottom: 1.5rem;
+    }
+
+    h2 { font-size: 1.1rem; margin-bottom: 1.25rem; color: #1a1a2e; }
+
+    label { display: block; font-size: 0.85rem; font-weight: 600;
+      color: #555; margin-bottom: 0.35rem; }
+
+    input[type="text"], textarea {
+      width: 100%; padding: 0.65rem 0.875rem; border: 1.5px solid #ddd;
+      border-radius: 8px; font-size: 0.95rem; font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus, textarea:focus {
+      outline: none; border-color: #4f46e5;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+
+    .id-row { display: flex; gap: 0.75rem; }
+    .id-row input { flex: 1; }
+
+    button {
+      padding: 0.65rem 1.5rem; border: none; border-radius: 8px;
+      font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: 0.2s;
+    }
+    .btn-primary { background: #4f46e5; color: #fff; }
+    .btn-primary:hover { background: #4338ca; }
+    .btn-primary:disabled { background: #a5b4fc; cursor: not-allowed; }
+
+    .status {
+      padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.9rem;
+      margin-top: 1rem; display: none;
+    }
+    .status.info  { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .status.ok    { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .status.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+
+    #site-content { display: none; }
+
+    .images-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1rem; margin-top: 0.5rem;
+    }
+    .img-card {
+      border: 1.5px solid #e5e7eb; border-radius: 10px; overflow: hidden;
+      background: #f9fafb;
+    }
+    .img-card img {
+      width: 100%; height: 110px; object-fit: cover; display: block;
+    }
+    .img-card-body { padding: 0.5rem; }
+    .img-role { font-size: 0.75rem; font-weight: 700; color: #4f46e5;
+      text-transform: uppercase; letter-spacing: 0.05em; }
+    .img-card input {
+      width: 100%; margin-top: 0.35rem; padding: 0.4rem 0.5rem;
+      font-size: 0.8rem; border: 1px solid #ddd; border-radius: 6px;
+    }
+
+    .field-row { margin-bottom: 1rem; }
+    .submit-row { margin-top: 1.5rem; }
+
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid #fff; border-top-color: transparent;
+      border-radius: 50%; animation: spin 0.6s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="topbar">Nopeatsivut – Sivuston päivitys</div>
+
+<div class="container">
+
+  <!-- Vaihe 1: ID-haku -->
+  <div class="card" id="step-search">
+    <h2>Syötä sivustosi tunniste</h2>
+    <p style="font-size:0.9rem;color:#666;margin-bottom:1rem;">
+      Löydät tunnisteen sivustosi toimitussähköpostista tai aiemmasta päivitysviestistä.
+    </p>
+    <div class="id-row">
+      <input type="text" id="site-id-input" placeholder="esim. a3f2b1c4d5e6" autocomplete="off" />
+      <button class="btn-primary" id="search-btn" onclick="loadSite()">Hae sivusto</button>
+    </div>
+    <div class="status" id="search-status"></div>
+  </div>
+
+  <!-- Vaihe 2: Muokkauskenttä (näytetään haun jälkeen) -->
+  <div id="site-content">
+    <div class="card">
+      <h2 id="site-title">Sivusto ladattu</h2>
+
+      <!-- Kuvat -->
+      <div id="images-section" style="display:none">
+        <label style="margin-bottom:0.5rem;">Kuvat – liitä uusi URL jos haluat vaihtaa</label>
+        <div class="images-grid" id="images-grid"></div>
+      </div>
+
+      <!-- Tekstit -->
+      <div id="texts-section" style="display:none;margin-top:1.5rem;">
+        <label style="margin-bottom:0.5rem;">Avaintekstit</label>
+        <div id="texts-fields"></div>
+      </div>
+
+      <!-- Vapaa muutospyyntö -->
+      <div class="field-row" style="margin-top:1.5rem;">
+        <label for="free-text">Muut muutokset (vapaa teksti)</label>
+        <textarea id="free-text" placeholder="Esim: Muuta aukioloajat ma–pe 8–16. Lisää uusi palvelu: Lattiaremontti 85 €/m²."></textarea>
+      </div>
+
+      <div class="submit-row">
+        <button class="btn-primary" id="submit-btn" onclick="submitUpdate()">Lähetä muutokset</button>
+      </div>
+      <div class="status" id="submit-status"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const WORKER_URL = 'https://paivita.sivutnopeasti.workers.dev';
+const GH_ORG    = 'sivutnopeasti';
+
+let currentConfig = null;
+
+function showStatus(el, type, msg) {
+  el.className = 'status ' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function loadSite() {
+  const siteId = document.getElementById('site-id-input').value.trim();
+  const btn    = document.getElementById('search-btn');
+  const status = document.getElementById('search-status');
+
+  if (!siteId) { showStatus(status, 'error', 'Syötä sivuston tunniste.'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Haetaan...';
+  showStatus(status, 'info', 'Etsitään sivustoa...');
+
+  try {
+    // Hae repo GitHub API:sta tunnisteen perusteella
+    const searchRes = await fetch(
+      `https://api.github.com/search/repositories?q=org:${GH_ORG}+${siteId}+in:name&per_page=1`
+    );
+    const searchData = await searchRes.json();
+
+    if (!searchData.items || searchData.items.length === 0) {
+      showStatus(status, 'error', 'Sivustoa ei löydy tunnuksella "' + siteId + '". Tarkista tunniste.');
+      return;
+    }
+
+    const repoName = searchData.items[0].name;
+
+    // Hae site-config.json
+    const cfgRes = await fetch(
+      `https://raw.githubusercontent.com/${GH_ORG}/${repoName}/main/site-config.json`
+    );
+    if (!cfgRes.ok) throw new Error('site-config.json ei löydy');
+    currentConfig = await cfgRes.json();
+    currentConfig._repoName = repoName;
+
+    renderEditor(currentConfig);
+    showStatus(status, 'ok', '✓ Sivusto löytyi: ' + currentConfig.company);
+    document.getElementById('site-content').style.display = 'block';
+    document.getElementById('site-content').scrollIntoView({ behavior: 'smooth' });
+
+  } catch (e) {
+    showStatus(status, 'error', 'Virhe: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Hae sivusto';
+  }
+}
+
+function renderEditor(config) {
+  document.getElementById('site-title').textContent = config.company + ' – muokkaa sivustoa';
+
+  // Kuvat
+  const images = config.images || {};
+  const grid = document.getElementById('images-grid');
+  grid.innerHTML = '';
+  const roleLabels = {
+    logo: 'Logo', hero: 'Hero-kuva', team: 'Tiimikuva',
+  };
+  Object.entries(images).forEach(([role, img]) => {
+    const label = roleLabels[role] || role.replace('-', ' ');
+    grid.innerHTML += `
+      <div class="img-card">
+        <img src="${img.url}" alt="${img.alt}" onerror="this.style.display='none'">
+        <div class="img-card-body">
+          <div class="img-role">${label}</div>
+          <input type="text" data-role="${role}" data-old-url="${img.url}"
+            placeholder="Uusi kuva-URL (jätä tyhjäksi = ei muutosta)" />
+        </div>
+      </div>`;
+  });
+  if (Object.keys(images).length > 0) {
+    document.getElementById('images-section').style.display = 'block';
+  }
+
+  // Tekstit
+  const texts = config.texts || {};
+  const textsEl = document.getElementById('texts-fields');
+  textsEl.innerHTML = '';
+  const textLabels = { h1: 'Pääotsikko', hero_p: 'Esittelyteksti' };
+  Object.entries(texts).forEach(([key, val]) => {
+    if (key.startsWith('h2_')) return; // näytetään vain tärkeimmät
+    const label = textLabels[key] || key;
+    textsEl.innerHTML += `
+      <div class="field-row">
+        <label>${label}</label>
+        <textarea data-text-key="${key}" rows="2">${val}</textarea>
+      </div>`;
+  });
+  if (Object.keys(texts).length > 0) {
+    document.getElementById('texts-section').style.display = 'block';
+  }
+}
+
+async function submitUpdate() {
+  const btn    = document.getElementById('submit-btn');
+  const status = document.getElementById('submit-status');
+
+  // Kerää kuvamuutokset
+  const imageChanges = {};
+  document.querySelectorAll('#images-grid input[data-role]').forEach(input => {
+    const newUrl = input.value.trim();
+    if (newUrl) imageChanges[input.dataset.role] = { old: input.dataset.oldUrl, new: newUrl };
+  });
+
+  // Kerää tekstimuutokset
+  const textChanges = {};
+  document.querySelectorAll('#texts-fields textarea[data-text-key]').forEach(ta => {
+    const original = (currentConfig.texts || {})[ta.dataset.textKey] || '';
+    if (ta.value.trim() !== original.trim()) {
+      textChanges[ta.dataset.textKey] = { old: original, new: ta.value.trim() };
+    }
+  });
+
+  const freeText = document.getElementById('free-text').value.trim();
+
+  if (!Object.keys(imageChanges).length && !Object.keys(textChanges).length && !freeText) {
+    showStatus(status, 'error', 'Et ole tehnyt muutoksia.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Lähetetään...';
+  showStatus(status, 'info', 'Lähetetään muutospyyntö...');
+
+  try {
+    const payload = {
+      site_id:      currentConfig.site_id,
+      repo:         currentConfig.repo,
+      company:      currentConfig.company,
+      imageChanges,
+      textChanges,
+      freeText,
+    };
+
+    const res = await fetch(WORKER_URL + '/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+
+    showStatus(status, 'ok',
+      '✓ Muutospyyntö lähetetty! Sivusto päivitetään automaattisesti muutamassa minuutissa.');
+    btn.textContent = 'Lähetetty';
+
+  } catch (e) {
+    showStatus(status, 'error', 'Virhe lähetyksessä: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'Lähetä muutokset';
+  }
+}
+
+// Enter-näppäin ID-kentässä
+document.getElementById('site-id-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadSite();
+});
+</script>
+
+</body>
+</html>
