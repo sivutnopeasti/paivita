@@ -561,14 +561,25 @@ function showElementEditor(data) {
           showOverlay('Ladataan kuvaa...');
           const { url, thumbUrl } = await uploadToImgBB(fi.files[0]);
           document.getElementById('new-img-url').value = url;
-          // Päivitä esikatselu
+          // Päivitä sivupalkin esikatselu
           controls.querySelector('.preview-img-wrap img').src = thumbUrl;
+          // Päivitä iframe heti
+          applyInIframe(selectedEl.selector, 'image', url);
         } catch (e) {
           alert('Lataus epäonnistui: ' + e.message);
         } finally { hideOverlay(); }
       };
       fi.click();
     };
+
+    // Live-esikatselu URL-kentästä
+    document.getElementById('new-img-url').addEventListener('input', e => {
+      const url = e.target.value.trim();
+      if (url) {
+        controls.querySelector('.preview-img-wrap img').src = url;
+        applyInIframe(selectedEl.selector, 'image', url);
+      }
+    });
 
   } else {
     const isShort = data.text.length < 80;
@@ -579,6 +590,11 @@ function showElementEditor(data) {
           ? `<input type="text" id="new-text" value="${data.text.replace(/"/g, '&quot;')}">`
           : `<textarea id="new-text" rows="5">${data.text}</textarea>`}
       </div>`;
+
+    // Live-esikatselu iframeen tekstin kirjoitusvaiheessa
+    document.getElementById('new-text').addEventListener('input', e => {
+      applyInIframe(selectedEl.selector, 'text', e.target.value);
+    });
   }
 }
 
