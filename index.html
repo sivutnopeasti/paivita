@@ -30,9 +30,19 @@
       font-weight: 700; font-size: 1rem; letter-spacing: 0.02em;
       flex-shrink: 0; gap: 1rem;
     }
-    .topbar-right { margin-left: auto; font-size: 0.8rem; font-weight: 400; color: var(--accent); }
+    .topbar-user {
+      margin-left: auto; display: flex; align-items: center; gap: 0.75rem;
+    }
+    .topbar-company { font-size: 0.8rem; font-weight: 400; color: var(--accent); }
+    .logout-btn {
+      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+      color: #fff; padding: 0.25rem 0.75rem; border-radius: 6px;
+      font-size: 0.8rem; cursor: pointer; font-family: 'Open Sans', sans-serif;
+      transition: background 0.15s;
+    }
+    .logout-btn:hover { background: rgba(255,255,255,0.28); }
 
-    /* ── ID-overlay ── */
+    /* ── Auth overlay ── */
     .id-overlay {
       position: fixed; inset: 0; z-index: 100; background: var(--bg-warm);
       display: flex; align-items: center; justify-content: center;
@@ -43,11 +53,43 @@
       box-shadow: 0 8px 30px rgba(30,91,181,0.12);
       border: 1px solid var(--border);
     }
-    .id-card h2 { font-size: 1.15rem; color: var(--text); margin-bottom: 0.5rem; }
-    .id-card p  { font-size: 0.875rem; color: var(--text-light); margin-bottom: 1.25rem; }
-    .id-row { display: flex; gap: 0.6rem; }
-    .id-row input { flex: 1; padding: 0.65rem 0.875rem; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-family: 'Open Sans', sans-serif; }
-    .id-row input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(30,91,181,0.12); }
+    .id-card h2 { font-size: 1.15rem; color: var(--text); margin-bottom: 0.3rem; }
+    .id-card p  { font-size: 0.875rem; color: var(--text-light); margin-bottom: 1.25rem; line-height: 1.5; }
+
+    /* Auth form fields */
+    .form-group { margin-bottom: 1rem; }
+    .form-group label {
+      display: block; font-size: 0.78rem; font-weight: 600;
+      color: var(--text-light); margin-bottom: 0.35rem;
+    }
+    .form-group input {
+      width: 100%; padding: 0.65rem 0.875rem; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 0.95rem; font-family: 'Open Sans', sans-serif;
+      color: var(--text); transition: border-color 0.15s;
+    }
+    .form-group input:focus {
+      outline: none; border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(30,91,181,0.12);
+    }
+
+    /* Auth links below form */
+    .auth-links {
+      margin-top: 1rem; display: flex; justify-content: space-between;
+      flex-wrap: wrap; gap: 0.5rem;
+    }
+    .auth-links a {
+      font-size: 0.82rem; color: var(--primary); text-decoration: none;
+      font-family: 'Open Sans', sans-serif;
+    }
+    .auth-links a:hover { text-decoration: underline; }
+    .auth-links.center { justify-content: center; }
+
+    .auth-divider {
+      margin: 1rem 0 0.75rem; border: none; border-top: 1px solid var(--border);
+    }
+
+    /* Full-width button inside auth card */
+    .id-card .btn-primary { width: 100%; }
 
     /* ── Editor layout ── */
     .editor-wrap {
@@ -210,19 +252,10 @@
     #site-iframe { width: 100%; height: 100%; border: none; display: block; }
 
     /* ── Image zoom slider ── */
-    .img-zoom-wrap {
-      margin-top: 0.5rem;
-    }
-    .img-zoom-row {
-      display: flex; align-items: center; gap: 0.5rem;
-    }
-    .img-zoom-row input[type=range] {
-      flex: 1; accent-color: var(--primary);
-    }
-    .img-zoom-pct {
-      min-width: 38px; text-align: right;
-      font-size: 0.78rem; font-weight: 600; color: var(--text-light);
-    }
+    .img-zoom-wrap { margin-top: 0.5rem; }
+    .img-zoom-row { display: flex; align-items: center; gap: 0.5rem; }
+    .img-zoom-row input[type=range] { flex: 1; accent-color: var(--primary); }
+    .img-zoom-pct { min-width: 38px; text-align: right; font-size: 0.78rem; font-weight: 600; color: var(--text-light); }
 
     /* ── Upload overlay ── */
     .upload-overlay {
@@ -276,20 +309,116 @@
 <!-- Topbar -->
 <div class="topbar">
   Nopeatsivut – Sivuston päivitys
-  <span class="topbar-right" id="topbar-site" style="display:none"></span>
+  <div class="topbar-user" id="topbar-user" style="display:none">
+    <span class="topbar-company" id="topbar-site"></span>
+    <button class="logout-btn" onclick="logout()">Kirjaudu ulos</button>
+  </div>
 </div>
 
-<!-- ID overlay -->
+<!-- Auth overlay -->
 <div class="id-overlay" id="id-overlay">
-  <div class="id-card">
-    <h2>Syötä sivustosi tunniste</h2>
-    <p>Löydät tunnisteen toimitussähköpostista tai aiemmasta päivitysviestistä.</p>
-    <div class="id-row">
-      <input type="text" id="site-id-input" placeholder="esim. a3f2b1c4d5e6" autocomplete="off">
-      <button class="btn-primary" id="search-btn" onclick="loadSite()">Hae sivusto</button>
+
+  <!-- Kirjautuminen (oletus) -->
+  <div class="id-card" id="auth-login">
+    <h2>Kirjaudu sisään</h2>
+    <p>Hallinnoi sivustosi tekstejä ja kuvia.</p>
+    <div class="form-group">
+      <label>Sähköpostiosoite</label>
+      <input type="email" id="login-email" placeholder="sinun@email.fi" autocomplete="email">
     </div>
-    <div class="status" id="search-status"></div>
+    <div class="form-group">
+      <label>Salasana</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" id="login-btn" onclick="doLogin()">Kirjaudu</button>
+    <div class="status" id="login-status"></div>
+    <div class="auth-links">
+      <a href="#" onclick="showMode('forgot'); return false;">Unohditko salasanan?</a>
+      <a href="#" onclick="showMode('setup'); return false;">Ensikirjautuminen &rarr;</a>
+    </div>
+    <hr class="auth-divider">
+    <div class="auth-links center">
+      <a href="#" onclick="showMode('admin'); return false;" style="color:var(--text-light);font-size:0.75rem;">Admin-kirjautuminen</a>
+    </div>
   </div>
+
+  <!-- Ensikirjautuminen (rekisteröinti) -->
+  <div class="id-card" id="auth-setup" style="display:none">
+    <h2>Luo tunnukset</h2>
+    <p>Anna toimitussähköpostissa saamasi sivuston tunniste ja luo itsellesi sähköposti + salasana.</p>
+    <div class="form-group">
+      <label>Sivuston tunniste (Site ID)</label>
+      <input type="text" id="setup-siteid" placeholder="esim. a3f2b1c4d5e6" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>Sähköpostiosoite</label>
+      <input type="email" id="setup-email" placeholder="sinun@email.fi" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Salasana (min. 8 merkkiä)</label>
+      <input type="password" id="setup-password" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label>Salasana uudelleen</label>
+      <input type="password" id="setup-password2" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <button class="btn-primary" id="setup-btn" onclick="doSetup()">Luo tunnukset</button>
+    <div class="status" id="setup-status"></div>
+    <div class="auth-links">
+      <a href="#" onclick="showMode('login'); return false;">&larr; Takaisin kirjautumiseen</a>
+    </div>
+  </div>
+
+  <!-- Salasanan palautus -->
+  <div class="id-card" id="auth-forgot" style="display:none">
+    <h2>Palauta salasana</h2>
+    <p>Lähetämme sähköpostiisi linkin salasanan vaihtoa varten.</p>
+    <div class="form-group">
+      <label>Sähköpostiosoite</label>
+      <input type="email" id="forgot-email" placeholder="sinun@email.fi" autocomplete="email">
+    </div>
+    <button class="btn-primary" id="forgot-btn" onclick="doForgot()">Lähetä palautuslinkki</button>
+    <div class="status" id="forgot-status"></div>
+    <div class="auth-links">
+      <a href="#" onclick="showMode('login'); return false;">&larr; Takaisin kirjautumiseen</a>
+    </div>
+  </div>
+
+  <!-- Salasanan vaihto (reset-linkki) -->
+  <div class="id-card" id="auth-reset" style="display:none">
+    <h2>Vaihda salasana</h2>
+    <p>Anna uusi salasana tilillesi.</p>
+    <div class="form-group">
+      <label>Uusi salasana (min. 8 merkkiä)</label>
+      <input type="password" id="reset-password" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label>Salasana uudelleen</label>
+      <input type="password" id="reset-password2" placeholder="••••••••" autocomplete="new-password">
+    </div>
+    <button class="btn-primary" id="reset-btn" onclick="doReset()">Vaihda salasana</button>
+    <div class="status" id="reset-status"></div>
+  </div>
+
+  <!-- Admin-kirjautuminen -->
+  <div class="id-card" id="auth-admin" style="display:none">
+    <h2>Admin-kirjautuminen</h2>
+    <p>Pääset mihin tahansa asiakastiliin admin-avaimella.</p>
+    <div class="form-group">
+      <label>Admin-avain</label>
+      <input type="password" id="admin-key" placeholder="••••••••••••••••" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>Asiakkaan Site ID</label>
+      <input type="text" id="admin-siteid" placeholder="esim. a3f2b1c4d5e6" autocomplete="off">
+    </div>
+    <button class="btn-primary" id="admin-btn" onclick="doAdminLogin()">Kirjaudu adminina</button>
+    <div class="status" id="admin-status"></div>
+    <div class="auth-links">
+      <a href="#" onclick="showMode('login'); return false;">&larr; Takaisin kirjautumiseen</a>
+    </div>
+  </div>
+
 </div>
 
 <!-- Editor -->
@@ -351,18 +480,243 @@ const WORKER_URL = 'https://paivita.kappe-gm.workers.dev';
 const GH_ORG     = 'sivutnopeasti';
 const IMGBB_KEY  = '%%PIC_API%%';
 
+// ─── Auth tila ─────────────────────────────────────────────────
+
+let sessionToken    = null;  // Bearer token
+let currentAuthMode = 'login';
+let currentResetToken = null;
+
+// ─── Muokkaus tila ─────────────────────────────────────────────
+
 let currentConfig   = null;
-let pendingChanges  = [];   // [{ id, type, label, oldValue, newValue }]
-let selectedEl      = null; // data from iframe click message
+let pendingChanges  = [];
+let selectedEl      = null;
 let changeIdCounter = 0;
 let hasUnsavedEdit  = false;
 
-// ─── Apufunktiot ───────────────────────────────────────────────
+// ─── Auth-näkymän vaihto ───────────────────────────────────────
+
+function showMode(mode) {
+  currentAuthMode = mode;
+  ['login', 'setup', 'forgot', 'reset', 'admin'].forEach(m => {
+    document.getElementById(`auth-${m}`).style.display = m === mode ? '' : 'none';
+  });
+}
+
+// ─── Automaattinen kirjautuminen sivun latautuessa ─────────────
+
+window.addEventListener('load', async () => {
+  // Tarkista reset-linkki URL:sta
+  const params     = new URLSearchParams(window.location.search);
+  const resetTok   = params.get('reset');
+  if (resetTok) {
+    currentResetToken = resetTok;
+    showMode('reset');
+    return;
+  }
+
+  // Tarkista tallennettu sessio
+  const stored = localStorage.getItem('paivita_session');
+  if (stored) {
+    try {
+      const { token, siteId } = JSON.parse(stored);
+      sessionToken = token;
+      await loadSite(siteId);
+    } catch {
+      localStorage.removeItem('paivita_session');
+      sessionToken = null;
+    }
+  }
+});
+
+// ─── Kirjautuminen (sähköposti + salasana) ─────────────────────
+
+async function doLogin() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const btn      = document.getElementById('login-btn');
+  const status   = document.getElementById('login-status');
+
+  if (!email || !password) { showStatus(status, 'error', 'Täytä kaikki kentät.'); return; }
+
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner"></span>Kirjaudutaan...';
+
+  try {
+    const res  = await fetch(WORKER_URL + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showStatus(status, 'error', data.error || 'Kirjautuminen epäonnistui'); return; }
+
+    localStorage.setItem('paivita_session', JSON.stringify({ token: data.token, siteId: data.site_id }));
+    sessionToken = data.token;
+    await loadSite(data.site_id, status);
+  } catch (e) {
+    showStatus(status, 'error', 'Virhe: ' + e.message);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Kirjaudu';
+  }
+}
+
+// ─── Ensikirjautuminen (rekisteröinti) ─────────────────────────
+
+async function doSetup() {
+  const site_id   = document.getElementById('setup-siteid').value.trim();
+  const email     = document.getElementById('setup-email').value.trim();
+  const password  = document.getElementById('setup-password').value;
+  const password2 = document.getElementById('setup-password2').value;
+  const btn       = document.getElementById('setup-btn');
+  const status    = document.getElementById('setup-status');
+
+  if (!site_id || !email || !password || !password2) { showStatus(status, 'error', 'Täytä kaikki kentät.'); return; }
+  if (password !== password2) { showStatus(status, 'error', 'Salasanat eivät täsmää.'); return; }
+  if (password.length < 8)    { showStatus(status, 'error', 'Salasana on liian lyhyt (min. 8 merkkiä).'); return; }
+
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner"></span>Luodaan tunnuksia...';
+
+  try {
+    const res  = await fetch(WORKER_URL + '/auth/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ site_id, email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showStatus(status, 'error', data.error || 'Rekisteröinti epäonnistui'); return; }
+
+    localStorage.setItem('paivita_session', JSON.stringify({ token: data.token, siteId: data.site_id }));
+    sessionToken = data.token;
+    await loadSite(data.site_id, status);
+  } catch (e) {
+    showStatus(status, 'error', 'Virhe: ' + e.message);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Luo tunnukset';
+  }
+}
+
+// ─── Salasanan palautuspyyntö ───────────────────────────────────
+
+async function doForgot() {
+  const email  = document.getElementById('forgot-email').value.trim();
+  const btn    = document.getElementById('forgot-btn');
+  const status = document.getElementById('forgot-status');
+
+  if (!email) { showStatus(status, 'error', 'Syötä sähköpostiosoite.'); return; }
+
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner"></span>Lähetetään...';
+
+  try {
+    await fetch(WORKER_URL + '/auth/reset-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    showStatus(status, 'ok', '✓ Jos sähköposti on rekisteröity, saat viestin muutamassa minuutissa.');
+  } catch (e) {
+    showStatus(status, 'error', 'Virhe: ' + e.message);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Lähetä palautuslinkki';
+  }
+}
+
+// ─── Salasanan vaihto (reset-linkin kautta) ─────────────────────
+
+async function doReset() {
+  const password  = document.getElementById('reset-password').value;
+  const password2 = document.getElementById('reset-password2').value;
+  const btn       = document.getElementById('reset-btn');
+  const status    = document.getElementById('reset-status');
+
+  if (!password || !password2) { showStatus(status, 'error', 'Täytä kaikki kentät.'); return; }
+  if (password !== password2)  { showStatus(status, 'error', 'Salasanat eivät täsmää.'); return; }
+  if (password.length < 8)     { showStatus(status, 'error', 'Salasana on liian lyhyt (min. 8 merkkiä).'); return; }
+
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner"></span>Vaihdetaan...';
+
+  try {
+    const res  = await fetch(WORKER_URL + '/auth/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: currentResetToken, newPassword: password }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showStatus(status, 'error', data.error || 'Salasanan vaihto epäonnistui'); return; }
+
+    // Siivoa ?reset= URL:sta
+    window.history.replaceState({}, '', window.location.pathname);
+    localStorage.setItem('paivita_session', JSON.stringify({ token: data.token, siteId: data.site_id }));
+    sessionToken = data.token;
+    await loadSite(data.site_id, status);
+  } catch (e) {
+    showStatus(status, 'error', 'Virhe: ' + e.message);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Vaihda salasana';
+  }
+}
+
+// ─── Admin-kirjautuminen ────────────────────────────────────────
+
+async function doAdminLogin() {
+  const adminKey = document.getElementById('admin-key').value.trim();
+  const siteId   = document.getElementById('admin-siteid').value.trim();
+  const btn      = document.getElementById('admin-btn');
+  const status   = document.getElementById('admin-status');
+
+  if (!adminKey || !siteId) { showStatus(status, 'error', 'Täytä kaikki kentät.'); return; }
+
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner"></span>Kirjaudutaan...';
+
+  // Ei tallenneta adminina localStorage:een (tietoturva)
+  sessionToken = `ADMIN:${adminKey}`;
+  currentAuthMode = 'admin';
+
+  try {
+    await loadSite(siteId, status);
+  } catch (e) {
+    sessionToken = null;
+    showStatus(status, 'error', e.message || 'Virhe kirjautumisessa');
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Kirjaudu adminina';
+  }
+}
+
+// ─── Uloskirjautuminen ──────────────────────────────────────────
+
+function logout() {
+  localStorage.removeItem('paivita_session');
+  sessionToken   = null;
+  currentConfig  = null;
+  pendingChanges = [];
+  selectedEl     = null;
+  hasUnsavedEdit = false;
+
+  document.getElementById('editor-wrap').style.display = 'none';
+  document.getElementById('id-overlay').style.display  = 'flex';
+  document.getElementById('topbar-user').style.display = 'none';
+
+  showMode('login');
+
+  document.getElementById('login-email').value    = '';
+  document.getElementById('login-password').value = '';
+}
+
+// ─── Apufunktiot ────────────────────────────────────────────────
 
 function showStatus(el, type, msg) {
-  el.className = 'status ' + type;
-  el.textContent = msg;
-  el.style.display = 'block';
+  el.className      = 'status ' + type;
+  el.textContent    = msg;
+  el.style.display  = 'block';
 }
 function showOverlay(text) {
   document.getElementById('uploadOverlayText').textContent = text || 'Ladataan...';
@@ -412,25 +766,14 @@ async function uploadToImgBB(file) {
 
 // ─── Sivuston haku ─────────────────────────────────────────────
 
-async function loadSite() {
-  const siteId = document.getElementById('site-id-input').value.trim();
-  const btn    = document.getElementById('search-btn');
-  const status = document.getElementById('search-status');
-
-  if (!siteId) { showStatus(status, 'error', 'Syötä sivuston tunniste.'); return; }
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Haetaan...';
-  showStatus(status, 'info', 'Etsitään sivustoa...');
-
+async function loadSite(siteId, statusEl = null) {
   try {
     const searchRes  = await fetch(
       `https://api.github.com/search/repositories?q=org:${GH_ORG}+${siteId}+in:name&per_page=1`
     );
     const searchData = await searchRes.json();
     if (!searchData.items || searchData.items.length === 0) {
-      showStatus(status, 'error', 'Sivustoa ei löydy tunnuksella "' + siteId + '". Tarkista tunniste.');
-      return;
+      throw new Error('Sivustoa ei löydy tunnuksella "' + siteId + '". Tarkista tunniste.');
     }
 
     const repoName = searchData.items[0].name;
@@ -444,20 +787,25 @@ async function loadSite() {
     // Avaa editori
     document.getElementById('id-overlay').style.display  = 'none';
     document.getElementById('editor-wrap').style.display = 'flex';
+    document.getElementById('topbar-user').style.display = '';
 
     const siteUrl = `https://${GH_ORG}.github.io/${repoName}/`;
-    document.getElementById('sidebar-company').textContent  = currentConfig.company;
-    document.getElementById('sidebar-sitelink').href        = siteUrl;
-    document.getElementById('topbar-site').textContent      = currentConfig.company;
-    document.getElementById('topbar-site').style.display    = '';
+    document.getElementById('sidebar-company').textContent = currentConfig.company;
+    document.getElementById('sidebar-sitelink').href       = siteUrl;
+    document.getElementById('topbar-site').textContent     = currentConfig.company;
 
-    loadIframe(repoName);
+    await loadIframe(repoName);
 
   } catch (e) {
-    showStatus(status, 'error', 'Virhe: ' + e.message);
-  } finally {
-    btn.disabled    = false;
-    btn.textContent = 'Hae sivusto';
+    if (statusEl) showStatus(statusEl, 'error', e.message);
+    else {
+      // Auto-login epäonnistui → puhdista sessio ja näytä kirjautuminen
+      localStorage.removeItem('paivita_session');
+      sessionToken = null;
+      document.getElementById('id-overlay').style.display = 'flex';
+      showMode('login');
+    }
+    throw e;
   }
 }
 
@@ -491,9 +839,8 @@ async function loadIframe(repoName) {
 }
 
 function injectEditorScript(doc) {
-  // Lisää highlight-CSS
-  const style     = doc.createElement('style');
-  style.id        = 'paivita-styles';
+  const style       = doc.createElement('style');
+  style.id          = 'paivita-styles';
   style.textContent = `
     .paivita-hover    { outline: 2px solid #3a7bd5 !important; outline-offset: 2px !important; cursor: pointer !important; }
     .paivita-selected { outline: 3px solid #1e5bb5 !important; outline-offset: 2px !important; }
@@ -502,10 +849,8 @@ function injectEditorScript(doc) {
   `;
   doc.head.appendChild(style);
 
-  // Merkitse muokattavat elementit
   const editable = 'h1, h2, h3, h4, h5, h6, p, span, li, a, button, td, th, label, div[class*="text"], div[class*="title"], div[class*="desc"], div[class*="content"]';
   doc.querySelectorAll(editable).forEach(el => {
-    // Ohita elementit joissa on lapsia jotka ovat myös muokattavia (ota vain lehtisolmut jolla on tekstiä)
     const hasTextChild = [...el.childNodes].some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 2);
     if (hasTextChild || el.childElementCount === 0) {
       el.dataset.paivitaEditable = 'text';
@@ -515,7 +860,6 @@ function injectEditorScript(doc) {
     el.dataset.paivitaEditable = 'image';
   });
 
-  // Hover
   doc.addEventListener('mouseover', e => {
     if (!e.target.dataset.paivitaEditable) return;
     e.target.classList.add('paivita-hover');
@@ -524,13 +868,11 @@ function injectEditorScript(doc) {
     e.target.classList.remove('paivita-hover');
   }, true);
 
-  // Klikkaus
   doc.addEventListener('click', e => {
     const el = e.target;
     if (!el.dataset.paivitaEditable) return;
     e.preventDefault(); e.stopPropagation();
 
-    // Poista vanha valinta
     doc.querySelectorAll('.paivita-selected').forEach(x => x.classList.remove('paivita-selected'));
     el.classList.add('paivita-selected');
 
@@ -548,7 +890,6 @@ function injectEditorScript(doc) {
 }
 
 function buildSelector(el, doc) {
-  // Rakentaa lyhyen CSS-polun joka yksilöi elementin
   const path = [];
   let cur = el;
   while (cur && cur !== doc.body && path.length < 5) {
@@ -574,10 +915,9 @@ function buildSelector(el, doc) {
 window.addEventListener('message', e => {
   if (e.data?.source !== 'paivita-editor') return;
   if (hasUnsavedEdit) {
-    // Estä uusi valinta — heiluta tallenna-nappia
     const btn = document.getElementById('apply-btn');
     btn.classList.remove('shake');
-    void btn.offsetWidth; // reflow
+    void btn.offsetWidth;
     btn.classList.add('shake');
     return;
   }
@@ -633,11 +973,8 @@ function showElementEditor(data) {
           showOverlay('Ladataan kuvaa...');
           const { url, thumbUrl } = await uploadToImgBB(fi.files[0]);
           document.getElementById('new-img-url').value = url;
-          // Päivitä sivupalkin esikatselu
           controls.querySelector('.preview-img-wrap img').src = thumbUrl;
-          // Päivitä iframe heti
           applyInIframe(selectedEl.selector, 'image', url);
-
         } catch (e) {
           alert('Lataus epäonnistui: ' + e.message);
         } finally { hideOverlay(); }
@@ -645,7 +982,6 @@ function showElementEditor(data) {
       fi.click();
     };
 
-    // Live-esikatselu URL-kentästä
     document.getElementById('new-img-url').addEventListener('input', e => {
       const url = e.target.value.trim();
       if (url) {
@@ -665,8 +1001,6 @@ function showElementEditor(data) {
       </div>`;
 
     const newTextEl = document.getElementById('new-text');
-
-    // Live-esikatselu iframeen tekstin kirjoitusvaiheessa
     newTextEl.addEventListener('input', e => {
       hasUnsavedEdit = e.target.value.trim() !== selectedEl.text;
       applyInIframe(selectedEl.selector, 'text', e.target.value);
@@ -680,7 +1014,6 @@ function clearSelection() {
   document.getElementById('click-hint').style.display  = '';
   document.getElementById('elem-editor').style.display = 'none';
 
-  // Poista valinta iframesta
   try {
     const iframe = document.getElementById('site-iframe');
     iframe.contentDocument.querySelectorAll('.paivita-selected')
@@ -713,10 +1046,8 @@ function applyChange() {
     label = `${TYPE_LABELS[selectedEl.tagName] || selectedEl.tagName}: "${short}"`;
   }
 
-  // Live preview iframessa
   applyInIframe(selectedEl.selector, selectedEl.type, newValue);
 
-  // Tallenna listaan
   const id = ++changeIdCounter;
   pendingChanges.push({ id, type, label, oldValue, newValue, tagName: selectedEl.tagName });
   renderChangesList();
@@ -737,9 +1068,9 @@ function applyInIframe(selector, type, value) {
 
 function renderChangesList() {
   const count = pendingChanges.length;
-  document.getElementById('changes-count').textContent  = count;
+  document.getElementById('changes-count').textContent     = count;
   document.getElementById('changes-section').style.display = count > 0 ? 'block' : 'none';
-  document.getElementById('submit-btn').disabled = count === 0;
+  document.getElementById('submit-btn').disabled           = count === 0;
 
   const icon = c => c.type === 'image' ? '🖼️' : '✏️';
   document.getElementById('changes-list').innerHTML = pendingChanges.map(c => `
@@ -760,7 +1091,7 @@ function removeChange(id) {
   renderChangesList();
 }
 
-// ─── Lähetys workerille ────────────────────────────────────────
+// ─── Lähetys workerille (autentikoitu) ────────────────────────
 
 async function submitChanges() {
   if (!pendingChanges.length) return;
@@ -768,11 +1099,10 @@ async function submitChanges() {
   const btn    = document.getElementById('submit-btn');
   const status = document.getElementById('submit-status');
 
-  btn.disabled = true;
+  btn.disabled  = true;
   btn.innerHTML = '<span class="spinner"></span>Lähetetään...';
   showStatus(status, 'info', 'Lähetetään muutospyyntö...');
 
-  // Muodosta payload (muutokset vapaamuotoisena + strukturoituina)
   const imageChanges = {};
   const textChanges  = {};
   const lines        = ['Visuaaliset muutokset (tee täsmälleen nämä muutokset):\n'];
@@ -797,7 +1127,10 @@ async function submitChanges() {
   try {
     const res = await fetch(WORKER_URL + '/update', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionToken}`,
+      },
       body: JSON.stringify({
         site_id:      currentConfig.site_id,
         repo:         currentConfig.repo,
@@ -807,7 +1140,10 @@ async function submitChanges() {
         freeText,
       }),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || await res.text());
+    }
 
     showStatus(status, 'ok', '✓ Lähetetty! Sivusto päivittyy muutamassa minuutissa.');
     pendingChanges = [];
@@ -821,10 +1157,12 @@ async function submitChanges() {
   }
 }
 
-// Enter ID-kentässä
-document.getElementById('site-id-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') loadSite();
-});
+// Enter-näppäin kirjautumislomakkeilla
+document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('login-email').addEventListener('keydown',    e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('setup-password2').addEventListener('keydown', e => { if (e.key === 'Enter') doSetup(); });
+document.getElementById('forgot-email').addEventListener('keydown',   e => { if (e.key === 'Enter') doForgot(); });
+document.getElementById('reset-password2').addEventListener('keydown', e => { if (e.key === 'Enter') doReset(); });
 </script>
 
 </body>
