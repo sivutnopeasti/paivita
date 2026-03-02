@@ -1077,7 +1077,14 @@ function injectEditorScript(doc) {
       btn.textContent = '✕';
 
       const updatePos = () => {
-        const r = target.getBoundingClientRect();
+        const r  = target.getBoundingClientRect();
+        const vh = doc.defaultView.innerHeight;
+        // Piilota jos kuvan yläreuna tai oikeareuna ei ole näkyvissä
+        if (r.top < 0 || r.top > vh || r.right < 32 || r.bottom < 0) {
+          btn.style.display = 'none';
+          return;
+        }
+        btn.style.display = 'flex';
         btn.style.top  = (r.top  + 6)  + 'px';
         btn.style.left = (r.right - 32) + 'px';
       };
