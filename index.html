@@ -1210,6 +1210,7 @@ function renderCertLogos() {
       <button class="cert-logo-chip-del" onclick="removeCertLogo(${i})" title="Poista">✕</button>`;
     row.appendChild(chip);
   });
+  document.getElementById('submit-btn').disabled = pendingChanges.length === 0 && certLogos.length === 0;
 }
 
 function addCertLogo() {
