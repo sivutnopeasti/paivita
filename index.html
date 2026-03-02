@@ -1021,12 +1021,6 @@ function injectEditorScript(doc) {
     el.dataset.paivitaEditable = 'image';
   });
 
-  // Estä kaikki linkkinavigaatio iframessa
-  doc.addEventListener('click', e => {
-    const anchor = e.target.closest('a[href]');
-    if (anchor) { e.preventDefault(); e.stopImmediatePropagation(); }
-  }, true);
-
   doc.addEventListener('mouseover', e => {
     if (!e.target.dataset.paivitaEditable) return;
     e.target.classList.add('paivita-hover');
@@ -1037,15 +1031,22 @@ function injectEditorScript(doc) {
 
   function removeDelBtn() {
     const existing = doc.getElementById('paivita-del-btn');
-    if (existing) existing.remove();
+    if (existing) {
+      if (existing._scrollCb) doc.removeEventListener('scroll', existing._scrollCb, true);
+      existing.remove();
+    }
   }
 
   doc.addEventListener('click', e => {
     const el = e.target;
-    // Älä reagoi oman X-napin klikkaukseen
     if (el.id === 'paivita-del-btn') return;
+
+    // Estä linkkinavigaatio aina – myös ei-editoitavissa elementeissä
+    if (e.target.closest('a[href]')) e.preventDefault();
+
     if (!el.dataset.paivitaEditable) { removeDelBtn(); return; }
-    e.preventDefault(); e.stopImmediatePropagation();
+    e.preventDefault();
+    e.stopPropagation();
 
     doc.querySelectorAll('.paivita-selected').forEach(x => x.classList.remove('paivita-selected'));
     removeDelBtn();
@@ -1054,16 +1055,23 @@ function injectEditorScript(doc) {
     const type     = el.dataset.paivitaEditable;
     const selector = buildSelector(el, doc);
 
-    // X-nappi kuvan päälle
+    // X-nappi kuvan päälle, seuraa scrollia
     if (type === 'image') {
-      const rect = el.getBoundingClientRect();
-      const btn  = doc.createElement('button');
+      const btn = doc.createElement('button');
       btn.id = 'paivita-del-btn';
       btn.textContent = '✕';
-      btn.style.top  = (rect.top  + 6)  + 'px';
-      btn.style.left = (rect.right - 32) + 'px';
+
+      const updatePos = () => {
+        const r = el.getBoundingClientRect();
+        btn.style.top  = (r.top  + 6)  + 'px';
+        btn.style.left = (r.right - 32) + 'px';
+      };
+      updatePos();
+      btn._scrollCb = updatePos;
+      doc.addEventListener('scroll', updatePos, true);
+
       btn.addEventListener('click', ev => {
-        ev.preventDefault(); ev.stopImmediatePropagation();
+        ev.preventDefault(); ev.stopPropagation();
         removeDelBtn();
         window.parent.postMessage({
           source: 'paivita-editor', type: 'image-delete',
