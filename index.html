@@ -291,9 +291,97 @@
       animation: shake 0.35s ease;
       background: #dc2626 !important;
     }
+
+    /* ── Sertifikaattien logot ── */
+    .cert-section {
+      flex-shrink: 0; border-top: 1px solid var(--border); padding: 0.75rem 1rem;
+    }
+    .cert-section-title {
+      font-size: 0.78rem; font-weight: 700; color: var(--text);
+      margin-bottom: 0.6rem;
+    }
+    .cert-logos-row {
+      display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.5rem;
+    }
+    .cert-logo-chip {
+      display: flex; align-items: center; gap: 0.3rem;
+      background: var(--bg-warm); border: 1px solid var(--border);
+      border-radius: 7px; padding: 0.25rem 0.4rem; max-width: 130px;
+    }
+    .cert-logo-chip img {
+      width: 28px; height: 22px; object-fit: contain; flex-shrink: 0;
+    }
+    .cert-logo-chip-name {
+      font-size: 0.65rem; color: var(--text); line-height: 1.2;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .cert-logo-chip-del {
+      background: none; border: none; color: var(--text-light);
+      font-size: 0.8rem; cursor: pointer; padding: 0; flex-shrink: 0;
+      line-height: 1;
+    }
+    .cert-logo-chip-del:hover { color: #b91c1c; }
+    .cert-add-btn {
+      width: 100%; padding: 0.45rem; border: 1.5px dashed rgba(30,91,181,0.35);
+      border-radius: 8px; background: var(--bg); color: var(--primary);
+      font-size: 0.8rem; font-weight: 600; cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .cert-add-btn:hover { border-color: var(--primary); background: var(--bg-warm); }
+
+    /* Cert nimi -modal */
+    .cert-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      display: none; align-items: center; justify-content: center; z-index: 400;
+    }
+    .cert-modal-overlay.active { display: flex; }
+    .cert-modal {
+      background: #fff; border-radius: 12px; padding: 1.5rem;
+      width: 320px; max-width: 92vw;
+    }
+    .cert-modal h3 { font-size: 0.95rem; color: var(--text); margin-bottom: 0.875rem; }
+    .cert-modal select {
+      width: 100%; padding: 0.6rem 0.75rem; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 0.9rem; margin-bottom: 0.875rem;
+      font-family: 'Open Sans', sans-serif; color: var(--text); background: #fff;
+    }
+    .cert-modal select:focus { outline: none; border-color: var(--primary); }
+    .cert-modal-btns { display: flex; gap: 0.5rem; }
+    .cert-modal-btns .btn-primary { flex: 1; }
+    .cert-modal-btns .btn-secondary { flex: 1; }
   </style>
 </head>
 <body>
+
+<!-- Sertifikaatin nimi -modal -->
+<div class="cert-modal-overlay" id="certModalOverlay">
+  <div class="cert-modal">
+    <h3>Minkä sertifikaatin logo?</h3>
+    <select id="cert-name-select">
+      <option value="">Valitse sertifikaatti...</option>
+      <option>Suomen Vahvimmat AAA</option>
+      <option>Suomen Vahvimmat AA+ tai AA</option>
+      <option>Kauppalehti Menestyjä</option>
+      <option>D&amp;B Rating AAA/AA</option>
+      <option>S1-sähköpätevyys</option>
+      <option>S2-sähköpätevyys</option>
+      <option>S3-sähköpätevyys</option>
+      <option>Luotettava Kumppani (Vastuu Group)</option>
+      <option>RALA-pätevyys</option>
+      <option>Eurofins – Märkätilat</option>
+      <option>Eurofins – Rakenteiden tiiviys/kosteus</option>
+      <option>AHA-asiantuntija (Asbesti)</option>
+      <option>KVV-pätevyys (Putkityöt)</option>
+      <option>Tieturva (Maanrakennus)</option>
+      <option>Muu</option>
+    </select>
+    <div class="cert-modal-btns">
+      <button class="btn-primary" onclick="confirmCertName()">Vahvista</button>
+      <button class="btn-secondary" onclick="closeCertModal()">Peruuta</button>
+    </div>
+  </div>
+</div>
 
 <!-- Upload overlay -->
 <div class="upload-overlay" id="uploadOverlay">
@@ -454,6 +542,14 @@
       <div id="changes-list"></div>
     </div>
 
+    <!-- Sertifikaattien logot -->
+    <div class="cert-section" id="cert-section" style="display:none">
+      <div class="cert-section-title">🏅 Sertifikaattien logot</div>
+      <div class="cert-logos-row" id="cert-logos-row"></div>
+      <button class="cert-add-btn" onclick="addCertLogo()">＋ Lisää sertifikaatin logo</button>
+      <input type="file" id="cert-logo-file" accept="image/*" style="display:none">
+    </div>
+
     <!-- Footer -->
     <div class="sidebar-footer">
       <button class="submit-btn" id="submit-btn" disabled onclick="submitChanges()">
@@ -486,6 +582,8 @@ let currentResetToken = null;
 
 let currentConfig   = null;
 let pendingChanges  = [];
+let certLogos       = []; // [{url, name}]
+let certNameCb      = null;
 let selectedEl      = null;
 let changeIdCounter = 0;
 let hasUnsavedEdit  = false;
@@ -796,6 +894,9 @@ async function loadSite(siteId, statusEl = null) {
     document.getElementById('sidebar-company').textContent = currentConfig.company;
     document.getElementById('sidebar-sitelink').href       = siteUrl;
     document.getElementById('topbar-site').textContent     = currentConfig.company;
+    certLogos = [];
+    renderCertLogos();
+    document.getElementById('cert-section').style.display = '';
 
     await loadIframe(repoName);
 
@@ -1094,6 +1195,61 @@ function removeChange(id) {
   renderChangesList();
 }
 
+// ─── Sertifikaattien logot ─────────────────────────────────────
+
+function renderCertLogos() {
+  const row = document.getElementById('cert-logos-row');
+  row.innerHTML = '';
+  certLogos.forEach((logo, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'cert-logo-chip';
+    chip.innerHTML = `
+      <img src="${logo.url}" alt="${logo.name}" onerror="this.style.display='none'">
+      <span class="cert-logo-chip-name" title="${logo.name}">${logo.name}</span>
+      <button class="cert-logo-chip-del" onclick="removeCertLogo(${i})" title="Poista">✕</button>`;
+    row.appendChild(chip);
+  });
+}
+
+function addCertLogo() {
+  const fi = document.getElementById('cert-logo-file');
+  fi.value = '';
+  fi.onchange = async () => {
+    if (!fi.files[0]) return;
+    try {
+      document.getElementById('uploadOverlay').classList.add('active');
+      const url = await uploadToImgBB(fi.files[0]);
+      document.getElementById('uploadOverlay').classList.remove('active');
+      certNameCb = name => {
+        certLogos.push({ url, name });
+        renderCertLogos();
+      };
+      document.getElementById('cert-name-select').value = '';
+      document.getElementById('certModalOverlay').classList.add('active');
+    } catch (e) {
+      document.getElementById('uploadOverlay').classList.remove('active');
+      alert('Lataus epäonnistui: ' + e.message);
+    }
+  };
+  fi.click();
+}
+
+function removeCertLogo(i) {
+  certLogos.splice(i, 1);
+  renderCertLogos();
+}
+
+function confirmCertName() {
+  const name = document.getElementById('cert-name-select').value;
+  if (!name) { alert('Valitse sertifikaatti.'); return; }
+  closeCertModal();
+  if (certNameCb) { certNameCb(name); certNameCb = null; }
+}
+
+function closeCertModal() {
+  document.getElementById('certModalOverlay').classList.remove('active');
+}
+
 // ─── Lähetys workerille (autentikoitu) ────────────────────────
 
 async function submitChanges() {
@@ -1141,6 +1297,7 @@ async function submitChanges() {
         imageChanges,
         textChanges,
         freeText,
+        ...(certLogos.length > 0 && { certLogos }),
       }),
     });
     if (!res.ok) {
