@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Päivitä sivustosi – Nopeatsivut</title>
+  <title>Päivitä sivustosi – Sivutnopeasti</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -396,7 +396,7 @@
 
 <!-- Topbar -->
 <div class="topbar">
-  Nopeatsivut – Sivuston päivitys
+  Sivutnopeasti – Sivuston päivitys
   <div class="topbar-user" id="topbar-user" style="display:none">
     <span class="topbar-company" id="topbar-site"></span>
     <button class="logout-btn" onclick="logout()">Kirjaudu ulos</button>
@@ -1175,7 +1175,7 @@ function renderChangesList() {
   const count = pendingChanges.length;
   document.getElementById('changes-count').textContent     = count;
   document.getElementById('changes-section').style.display = count > 0 ? 'block' : 'none';
-  document.getElementById('submit-btn').disabled           = count === 0;
+  document.getElementById('submit-btn').disabled           = count === 0 && certLogos.length === 0;
 
   const icon = c => c.type === 'image' ? '🖼️' : '✏️';
   document.getElementById('changes-list').innerHTML = pendingChanges.map(c => `
@@ -1254,7 +1254,7 @@ function closeCertModal() {
 // ─── Lähetys workerille (autentikoitu) ────────────────────────
 
 async function submitChanges() {
-  if (!pendingChanges.length) return;
+  if (!pendingChanges.length && !certLogos.length) return;
 
   const btn    = document.getElementById('submit-btn');
   const status = document.getElementById('submit-status');
@@ -1265,7 +1265,7 @@ async function submitChanges() {
 
   const imageChanges = {};
   const textChanges  = {};
-  const lines        = ['Visuaaliset muutokset (tee täsmälleen nämä muutokset):\n'];
+  const lines        = pendingChanges.length > 0 ? ['Visuaaliset muutokset (tee täsmälleen nämä muutokset):\n'] : [];
 
   let imgIdx = 0;
   let txtIdx = 0;
@@ -1308,6 +1308,8 @@ async function submitChanges() {
 
     showStatus(status, 'ok', '✓ Lähetetty! Sivusto päivittyy muutamassa minuutissa.');
     pendingChanges = [];
+    certLogos = [];
+    renderCertLogos();
     renderChangesList();
     btn.textContent = '✓ Lähetetty';
 
