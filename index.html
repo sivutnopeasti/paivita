@@ -1533,8 +1533,10 @@ async function submitChanges() {
       }),
     });
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || await res.text());
+      const raw = await res.text();
+      let errMsg;
+      try { errMsg = JSON.parse(raw).error || raw; } catch { errMsg = raw || `HTTP ${res.status}`; }
+      throw new Error(errMsg);
     }
 
     showStatus(status, 'ok', '✓ Lähetetty! Sivusto päivittyy muutamassa minuutissa.');
