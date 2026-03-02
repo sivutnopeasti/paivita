@@ -330,6 +330,44 @@
     }
     .cert-add-btn:hover { border-color: var(--primary); background: var(--bg-warm); }
 
+    /* ── Uusi kuva sivulle ── */
+    .add-image-section {
+      flex-shrink: 0; border-top: 1px solid var(--border); padding: 0.75rem 1rem;
+    }
+    .new-img-item {
+      display: flex; align-items: center; gap: 0.5rem;
+      background: var(--bg-warm); border: 1px solid var(--border);
+      border-radius: 7px; padding: 0.4rem 0.5rem; margin-bottom: 0.4rem;
+    }
+    .new-img-thumb {
+      width: 36px; height: 36px; object-fit: cover; border-radius: 5px; flex-shrink: 0;
+    }
+    .new-img-desc {
+      flex: 1; border: 1px solid var(--border); border-radius: 5px;
+      padding: 0.3rem 0.5rem; font-size: 0.75rem; font-family: 'Open Sans', sans-serif;
+      color: var(--text); background: #fff; min-width: 0;
+    }
+    .new-img-desc:focus { outline: none; border-color: var(--primary); }
+
+    /* ── Kumoa-nappi ── */
+    .undo-btn {
+      margin-left: auto; background: none; border: 1px solid var(--border);
+      border-radius: 5px; font-size: 0.7rem; color: var(--text-light);
+      padding: 0.15rem 0.45rem; cursor: pointer; font-family: 'Montserrat', sans-serif;
+      font-weight: 600; transition: all 0.15s;
+    }
+    .undo-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+    .undo-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── Poista kuva -nappi ── */
+    .delete-img-btn {
+      width: 100%; margin-top: 0.6rem; padding: 0.45rem;
+      border: 1.5px solid #fca5a5; border-radius: 8px; background: #fff5f5;
+      color: #b91c1c; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+      font-family: 'Montserrat', sans-serif; transition: background 0.15s;
+    }
+    .delete-img-btn:hover { background: #fee2e2; }
+
     /* Cert nimi -modal */
     .cert-modal-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.45);
@@ -538,8 +576,17 @@
       <div class="changes-title">
         Odottavat muutokset
         <span class="changes-count" id="changes-count">0</span>
+        <button class="undo-btn" id="undo-btn" onclick="undoLastChange()" title="Kumoa viimeisin (Ctrl+Z)" disabled>↩ Kumoa</button>
       </div>
       <div id="changes-list"></div>
+    </div>
+
+    <!-- Uusi kuva sivulle -->
+    <div class="add-image-section" id="add-image-section" style="display:none">
+      <div class="cert-section-title">🖼️ Lisää uusi kuva sivulle</div>
+      <div id="new-images-list"></div>
+      <button class="cert-add-btn" onclick="addNewSiteImage()">＋ Lisää kuva</button>
+      <input type="file" id="new-site-img-file" accept="image/*" style="display:none">
     </div>
 
     <!-- Sertifikaattien logot -->
@@ -895,8 +942,11 @@ async function loadSite(siteId, statusEl = null) {
     document.getElementById('sidebar-sitelink').href       = siteUrl;
     document.getElementById('topbar-site').textContent     = currentConfig.company;
     certLogos = [];
+    newSiteImages = [];
     renderCertLogos();
-    document.getElementById('cert-section').style.display = '';
+    renderNewImages();
+    document.getElementById('cert-section').style.display        = '';
+    document.getElementById('add-image-section').style.display   = '';
 
     await loadIframe(repoName);
 
@@ -950,6 +1000,13 @@ function injectEditorScript(doc) {
     .paivita-selected { outline: 3px solid #1e5bb5 !important; outline-offset: 2px !important; }
     * { cursor: default; }
     a, button { cursor: pointer; }
+    #paivita-del-btn {
+      position: fixed; width: 26px; height: 26px;
+      background: rgba(185,28,28,0.92); color: #fff; border: 2px solid #fff;
+      border-radius: 50%; cursor: pointer; font-size: 12px; font-weight: bold;
+      z-index: 99999; display: flex; align-items: center; justify-content: center;
+      padding: 0; line-height: 1; pointer-events: all; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
   `;
   doc.head.appendChild(style);
 
@@ -964,6 +1021,12 @@ function injectEditorScript(doc) {
     el.dataset.paivitaEditable = 'image';
   });
 
+  // Estä kaikki linkkinavigaatio iframessa
+  doc.addEventListener('click', e => {
+    const anchor = e.target.closest('a[href]');
+    if (anchor) { e.preventDefault(); e.stopImmediatePropagation(); }
+  }, true);
+
   doc.addEventListener('mouseover', e => {
     if (!e.target.dataset.paivitaEditable) return;
     e.target.classList.add('paivita-hover');
@@ -972,15 +1035,44 @@ function injectEditorScript(doc) {
     e.target.classList.remove('paivita-hover');
   }, true);
 
+  function removeDelBtn() {
+    const existing = doc.getElementById('paivita-del-btn');
+    if (existing) existing.remove();
+  }
+
   doc.addEventListener('click', e => {
     const el = e.target;
-    if (!el.dataset.paivitaEditable) return;
-    e.preventDefault(); e.stopPropagation();
+    // Älä reagoi oman X-napin klikkaukseen
+    if (el.id === 'paivita-del-btn') return;
+    if (!el.dataset.paivitaEditable) { removeDelBtn(); return; }
+    e.preventDefault(); e.stopImmediatePropagation();
 
     doc.querySelectorAll('.paivita-selected').forEach(x => x.classList.remove('paivita-selected'));
+    removeDelBtn();
     el.classList.add('paivita-selected');
 
-    const type = el.dataset.paivitaEditable;
+    const type     = el.dataset.paivitaEditable;
+    const selector = buildSelector(el, doc);
+
+    // X-nappi kuvan päälle
+    if (type === 'image') {
+      const rect = el.getBoundingClientRect();
+      const btn  = doc.createElement('button');
+      btn.id = 'paivita-del-btn';
+      btn.textContent = '✕';
+      btn.style.top  = (rect.top  + 6)  + 'px';
+      btn.style.left = (rect.right - 32) + 'px';
+      btn.addEventListener('click', ev => {
+        ev.preventDefault(); ev.stopImmediatePropagation();
+        removeDelBtn();
+        window.parent.postMessage({
+          source: 'paivita-editor', type: 'image-delete',
+          src: el.src || '', selector,
+        }, '*');
+      });
+      doc.body.appendChild(btn);
+    }
+
     window.parent.postMessage({
       source:   'paivita-editor',
       type,
@@ -988,7 +1080,7 @@ function injectEditorScript(doc) {
       text:     el.textContent.trim(),
       src:      el.src  || null,
       alt:      el.alt  || null,
-      selector: buildSelector(el, doc),
+      selector,
     }, '*');
   }, true);
 }
@@ -1018,6 +1110,10 @@ function buildSelector(el, doc) {
 
 window.addEventListener('message', e => {
   if (e.data?.source !== 'paivita-editor') return;
+  if (e.data.type === 'image-delete') {
+    handleImageDelete(e.data);
+    return;
+  }
   if (hasUnsavedEdit) {
     const btn = document.getElementById('apply-btn');
     btn.classList.remove('shake');
@@ -1067,7 +1163,8 @@ function showElementEditor(data) {
       </div>
       <p style="font-size:0.78rem;color:#6b7280;margin-top:0.25rem;line-height:1.5;">
         💡 Jos kuva näyttää väärin rajatulta, ei hätää — lähetyksen yhteydessä kuvasuhde korjataan automaattisesti.
-      </p>`;
+      </p>
+      <button class="delete-img-btn" onclick="deleteSelectedImage()">✕ Poista kuva sivulta kokonaan</button>`;
 
     document.getElementById('img-upload-trigger').onclick = () => {
       const fi = document.getElementById('img-file-hidden');
@@ -1123,6 +1220,8 @@ function clearSelection() {
     const iframe = document.getElementById('site-iframe');
     iframe.contentDocument.querySelectorAll('.paivita-selected')
       .forEach(el => el.classList.remove('paivita-selected'));
+    const delBtn = iframe.contentDocument.getElementById('paivita-del-btn');
+    if (delBtn) delBtn.remove();
   } catch (_) {}
 }
 
@@ -1154,7 +1253,7 @@ function applyChange() {
   applyInIframe(selectedEl.selector, selectedEl.type, newValue);
 
   const id = ++changeIdCounter;
-  pendingChanges.push({ id, type, label, oldValue, newValue, tagName: selectedEl.tagName });
+  pendingChanges.push({ id, type, label, oldValue, newValue, tagName: selectedEl.tagName, selector: selectedEl.selector });
   renderChangesList();
   clearSelection();
 }
@@ -1171,20 +1270,27 @@ function applyInIframe(selector, type, value) {
 
 // ─── Muutoslista ───────────────────────────────────────────────
 
+function updateSubmitState() {
+  const hasChanges = pendingChanges.length > 0 || certLogos.length > 0 || newSiteImages.length > 0;
+  document.getElementById('submit-btn').disabled = !hasChanges;
+  const undoBtn = document.getElementById('undo-btn');
+  if (undoBtn) undoBtn.disabled = pendingChanges.length === 0;
+}
+
 function renderChangesList() {
   const count = pendingChanges.length;
   document.getElementById('changes-count').textContent     = count;
   document.getElementById('changes-section').style.display = count > 0 ? 'block' : 'none';
-  document.getElementById('submit-btn').disabled           = count === 0 && certLogos.length === 0;
+  updateSubmitState();
 
-  const icon = c => c.type === 'image' ? '🖼️' : '✏️';
+  const icon = c => c.type === 'image-delete' ? '🗑️' : c.type === 'image' ? '🖼️' : '✏️';
   document.getElementById('changes-list').innerHTML = pendingChanges.map(c => `
     <div class="change-item">
       <div class="change-item-icon">${icon(c)}</div>
       <div class="change-item-text">
         <strong>${c.label}</strong>
-        ${c.type === 'image'
-          ? `<span style="color:#6b7280;font-size:0.72rem;">Uusi URL lisätty</span>`
+        ${c.type === 'image' || c.type === 'image-delete'
+          ? `<span style="color:#6b7280;font-size:0.72rem;">${c.type === 'image-delete' ? 'Poistettu' : 'Uusi URL lisätty'}</span>`
           : `<span style="color:#6b7280;font-size:0.72rem;">→ "${c.newValue.length > 35 ? c.newValue.substring(0,35)+'…' : c.newValue}"</span>`}
       </div>
       <button class="change-item-del" onclick="removeChange(${c.id})" title="Poista muutos">✕</button>
@@ -1192,8 +1298,87 @@ function renderChangesList() {
 }
 
 function removeChange(id) {
-  pendingChanges = pendingChanges.filter(c => c.id !== id);
+  const c = pendingChanges.find(x => x.id === id);
+  if (c && c.selector) applyInIframe(c.selector, c.type === 'image-delete' ? 'image' : c.type, c.oldValue);
+  pendingChanges = pendingChanges.filter(x => x.id !== id);
   renderChangesList();
+}
+
+function undoLastChange() {
+  if (!pendingChanges.length) return;
+  const last = pendingChanges.pop();
+  if (last.type === 'image-delete') {
+    try {
+      const doc = document.getElementById('site-iframe').contentDocument;
+      const el  = doc.querySelector(last.selector);
+      if (el) { el.src = last.oldValue; el.style.display = ''; }
+    } catch (_) {}
+  } else if (last.selector) {
+    applyInIframe(last.selector, last.type, last.oldValue);
+  }
+  renderChangesList();
+}
+
+function handleImageDelete(data) {
+  // Piilota kuva iframessa
+  try {
+    const doc = document.getElementById('site-iframe').contentDocument;
+    const el  = doc.querySelector(data.selector);
+    if (el) { el.src = ''; el.style.display = 'none'; }
+  } catch (_) {}
+  const id = ++changeIdCounter;
+  pendingChanges.push({
+    id, type: 'image-delete', label: 'Kuva poistettu sivulta',
+    oldValue: data.src, newValue: '', tagName: 'img', selector: data.selector,
+  });
+  renderChangesList();
+  clearSelection();
+}
+
+function deleteSelectedImage() {
+  if (!selectedEl || selectedEl.type !== 'image') return;
+  handleImageDelete({ src: selectedEl.src, selector: selectedEl.selector });
+}
+
+// ─── Uusi kuva sivulle ─────────────────────────────────────────
+
+let newSiteImages = []; // [{url, desc}]
+
+function renderNewImages() {
+  const list = document.getElementById('new-images-list');
+  list.innerHTML = '';
+  newSiteImages.forEach((img, i) => {
+    const item = document.createElement('div');
+    item.className = 'new-img-item';
+    item.innerHTML = `
+      <img src="${img.url}" alt="" class="new-img-thumb" onerror="this.style.display='none'">
+      <input type="text" class="new-img-desc" placeholder="Mihin lisätään? (vapaaehtoinen)"
+             value="${(img.desc||'').replace(/"/g,'&quot;')}" oninput="newSiteImages[${i}].desc=this.value">
+      <button class="cert-logo-chip-del" onclick="removeNewImage(${i})" title="Poista">✕</button>`;
+    list.appendChild(item);
+  });
+  updateSubmitState();
+}
+
+function addNewSiteImage() {
+  const fi = document.getElementById('new-site-img-file');
+  fi.value = '';
+  fi.onchange = async () => {
+    if (!fi.files[0]) return;
+    try {
+      showOverlay('Ladataan kuvaa...');
+      const { url } = await uploadToImgBB(fi.files[0]);
+      newSiteImages.push({ url, desc: '' });
+      renderNewImages();
+    } catch (e) { alert('Lataus epäonnistui: ' + e.message); }
+    finally { hideOverlay(); }
+  };
+  fi.click();
+}
+
+function removeNewImage(i) {
+  newSiteImages.splice(i, 1);
+  renderNewImages();
 }
 
 // ─── Sertifikaattien logot ─────────────────────────────────────
@@ -1210,7 +1395,7 @@ function renderCertLogos() {
       <button class="cert-logo-chip-del" onclick="removeCertLogo(${i})" title="Poista">✕</button>`;
     row.appendChild(chip);
   });
-  document.getElementById('submit-btn').disabled = pendingChanges.length === 0 && certLogos.length === 0;
+  updateSubmitState();
 }
 
 function addCertLogo() {
@@ -1255,7 +1440,7 @@ function closeCertModal() {
 // ─── Lähetys workerille (autentikoitu) ────────────────────────
 
 async function submitChanges() {
-  if (!pendingChanges.length && !certLogos.length) return;
+  if (!pendingChanges.length && !certLogos.length && !newSiteImages.length) return;
 
   const btn    = document.getElementById('submit-btn');
   const status = document.getElementById('submit-status');
@@ -1272,7 +1457,9 @@ async function submitChanges() {
   let txtIdx = 0;
 
   pendingChanges.forEach((c, i) => {
-    if (c.type === 'image') {
+    if (c.type === 'image-delete') {
+      lines.push(`${i+1}. POISTA KUVA: Poista img-elementti jonka src alkaa "${(c.oldValue||'').substring(0,80)}" kokonaan sivulta. Älä korvaa sitä millään.`);
+    } else if (c.type === 'image') {
       const role = `visual-img-${++imgIdx}`;
       imageChanges[role] = { old: c.oldValue || '', new: c.newValue };
       lines.push(`${i+1}. KUVA: Vaihda kuva jonka src="${(c.oldValue||'').substring(0,80)}" → "${c.newValue}"`);
@@ -1282,6 +1469,14 @@ async function submitChanges() {
       lines.push(`${i+1}. TEKSTI (${c.tagName.toUpperCase()}): Vaihda "${c.oldValue}" → "${c.newValue}"`);
     }
   });
+
+  if (newSiteImages.length > 0) {
+    if (lines.length > 0) lines.push('');
+    lines.push('Lisättävät uudet kuvat sivulle:');
+    newSiteImages.forEach((img, i) => {
+      lines.push(`${i+1}. Lisää kuva URL="${img.url}"${img.desc ? `, sijoitus: "${img.desc}"` : ' sopivaan paikkaan sivulla'}`);
+    });
+  }
 
   const freeText = lines.join('\n');
 
@@ -1310,7 +1505,9 @@ async function submitChanges() {
     showStatus(status, 'ok', '✓ Lähetetty! Sivusto päivittyy muutamassa minuutissa.');
     pendingChanges = [];
     certLogos = [];
+    newSiteImages = [];
     renderCertLogos();
+    renderNewImages();
     renderChangesList();
     btn.textContent = '✓ Lähetetty';
 
@@ -1327,6 +1524,15 @@ document.getElementById('login-email').addEventListener('keydown',    e => { if 
 document.getElementById('setup-password2').addEventListener('keydown', e => { if (e.key === 'Enter') doSetup(); });
 document.getElementById('forgot-email').addEventListener('keydown',   e => { if (e.key === 'Enter') doForgot(); });
 document.getElementById('reset-password2').addEventListener('keydown', e => { if (e.key === 'Enter') doReset(); });
+
+// Ctrl+Z / Cmd+Z — kumoa viimeisin muutos
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    const active = document.activeElement;
+    const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+    if (!isInput) { e.preventDefault(); undoLastChange(); }
+  }
+});
 </script>
 
 </body>
