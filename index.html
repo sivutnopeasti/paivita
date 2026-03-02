@@ -1041,19 +1041,34 @@ function injectEditorScript(doc) {
     const el = e.target;
     if (el.id === 'paivita-del-btn') return;
 
-    // Estä linkkinavigaatio aina – myös ei-editoitavissa elementeissä
-    if (e.target.closest('a[href]')) e.preventDefault();
+    // Estä linkkinavigaatio aina
+    if (el.closest('a[href]')) e.preventDefault();
 
-    if (!el.dataset.paivitaEditable) { removeDelBtn(); return; }
+    // Jos klikattu elementti ei ole suoraan editoitava (esim. kuvan päällä oleva
+    // tekstioverlay gallery-kortissa), katsotaan elementFromPoint-metodilla
+    // onko sen alla editoitava elementti (yleensä <img>)
+    let target = el;
+    if (!target.dataset.paivitaEditable) {
+      target.style.pointerEvents = 'none';
+      const under = doc.elementFromPoint(e.clientX, e.clientY);
+      target.style.pointerEvents = '';
+      if (under && under !== el && under.dataset.paivitaEditable) {
+        target = under;
+      } else {
+        removeDelBtn();
+        return;
+      }
+    }
+
     e.preventDefault();
     e.stopPropagation();
 
     doc.querySelectorAll('.paivita-selected').forEach(x => x.classList.remove('paivita-selected'));
     removeDelBtn();
-    el.classList.add('paivita-selected');
+    target.classList.add('paivita-selected');
 
-    const type     = el.dataset.paivitaEditable;
-    const selector = buildSelector(el, doc);
+    const type     = target.dataset.paivitaEditable;
+    const selector = buildSelector(target, doc);
 
     // X-nappi kuvan päälle, seuraa scrollia
     if (type === 'image') {
@@ -1062,7 +1077,7 @@ function injectEditorScript(doc) {
       btn.textContent = '✕';
 
       const updatePos = () => {
-        const r = el.getBoundingClientRect();
+        const r = target.getBoundingClientRect();
         btn.style.top  = (r.top  + 6)  + 'px';
         btn.style.left = (r.right - 32) + 'px';
       };
@@ -1075,7 +1090,7 @@ function injectEditorScript(doc) {
         removeDelBtn();
         window.parent.postMessage({
           source: 'paivita-editor', type: 'image-delete',
-          src: el.src || '', selector,
+          src: target.src || '', selector,
         }, '*');
       });
       doc.body.appendChild(btn);
@@ -1084,10 +1099,10 @@ function injectEditorScript(doc) {
     window.parent.postMessage({
       source:   'paivita-editor',
       type,
-      tagName:  el.tagName.toLowerCase(),
-      text:     el.textContent.trim(),
-      src:      el.src  || null,
-      alt:      el.alt  || null,
+      tagName:  target.tagName.toLowerCase(),
+      text:     target.textContent.trim(),
+      src:      target.src  || null,
+      alt:      target.alt  || null,
       selector,
     }, '*');
   }, true);
