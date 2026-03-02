@@ -1510,6 +1510,11 @@ async function submitChanges() {
 
   const freeText = lines.join('\n');
 
+  // Käytä sessioon rekisteröityä site_id:tä (ei site-config.json:n arvoa),
+  // jotta worker-autorisointi onnistuu aina
+  const _stored = JSON.parse(localStorage.getItem('paivita_session') || '{}');
+  const _siteId = _stored.siteId || currentConfig.site_id;
+
   try {
     const res = await fetch(WORKER_URL + '/update', {
       method: 'POST',
@@ -1518,7 +1523,7 @@ async function submitChanges() {
         'Authorization': `Bearer ${sessionToken}`,
       },
       body: JSON.stringify({
-        site_id:      currentConfig.site_id,
+        site_id:      _siteId,
         repo:         currentConfig.repo,
         company:      currentConfig.company,
         imageChanges,
