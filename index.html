@@ -224,6 +224,17 @@
       vertical-align: middle; margin-right: 5px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%       { transform: translateX(-6px); }
+      40%       { transform: translateX(6px); }
+      60%       { transform: translateX(-4px); }
+      80%       { transform: translateX(4px); }
+    }
+    .apply-btn.shake {
+      animation: shake 0.35s ease;
+      background: #dc2626 !important;
+    }
   </style>
 </head>
 <body>
@@ -282,7 +293,7 @@
           <button class="elem-clear-btn" onclick="clearSelection()" title="Sulje">✕</button>
         </div>
         <div id="elem-controls"></div>
-        <button class="apply-btn" onclick="applyChange()">Tallenna muutos ✓</button>
+        <button class="apply-btn" id="apply-btn" onclick="applyChange()">Tallenna muutos ✓</button>
       </div>
     </div>
 
@@ -321,6 +332,7 @@ let currentConfig   = null;
 let pendingChanges  = [];   // [{ id, type, label, oldValue, newValue }]
 let selectedEl      = null; // data from iframe click message
 let changeIdCounter = 0;
+let hasUnsavedEdit  = false;
 
 // ─── Apufunktiot ───────────────────────────────────────────────
 
@@ -527,6 +539,14 @@ function buildSelector(el, doc) {
 
 window.addEventListener('message', e => {
   if (e.data?.source !== 'paivita-editor') return;
+  if (hasUnsavedEdit) {
+    // Estä uusi valinta — heiluta tallenna-nappia
+    const btn = document.getElementById('apply-btn');
+    btn.classList.remove('shake');
+    void btn.offsetWidth; // reflow
+    btn.classList.add('shake');
+    return;
+  }
   showElementEditor(e.data);
 });
 
@@ -610,15 +630,19 @@ function showElementEditor(data) {
           : `<textarea id="new-text" rows="5">${data.text}</textarea>`}
       </div>`;
 
+    const newTextEl = document.getElementById('new-text');
+
     // Live-esikatselu iframeen tekstin kirjoitusvaiheessa
-    document.getElementById('new-text').addEventListener('input', e => {
+    newTextEl.addEventListener('input', e => {
+      hasUnsavedEdit = e.target.value.trim() !== selectedEl.text;
       applyInIframe(selectedEl.selector, 'text', e.target.value);
     });
   }
 }
 
 function clearSelection() {
-  selectedEl = null;
+  selectedEl     = null;
+  hasUnsavedEdit = false;
   document.getElementById('click-hint').style.display  = '';
   document.getElementById('elem-editor').style.display = 'none';
 
