@@ -1435,7 +1435,7 @@ function addCertLogo() {
     if (!fi.files[0]) return;
     try {
       document.getElementById('uploadOverlay').classList.add('active');
-      const url = await uploadToImgBB(fi.files[0]);
+      const { url } = await uploadToImgBB(fi.files[0]);
       document.getElementById('uploadOverlay').classList.remove('active');
       certNameCb = name => {
         certLogos.push({ url, name });
