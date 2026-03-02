@@ -336,10 +336,6 @@
       <a href="#" onclick="showMode('forgot'); return false;">Unohditko salasanan?</a>
       <a href="#" onclick="showMode('setup'); return false;">Ensikirjautuminen &rarr;</a>
     </div>
-    <hr class="auth-divider">
-    <div class="auth-links center">
-      <a href="#" onclick="showMode('admin'); return false;" style="color:var(--text-light);font-size:0.75rem;">Admin-kirjautuminen</a>
-    </div>
   </div>
 
   <!-- Ensikirjautuminen (rekisteröinti) -->
@@ -506,8 +502,15 @@ function showMode(mode) {
 // ─── Automaattinen kirjautuminen sivun latautuessa ─────────────
 
 window.addEventListener('load', async () => {
-  // Tarkista reset-linkki URL:sta
+  // Tarkista erikoisparametrit URL:sta
   const params     = new URLSearchParams(window.location.search);
+
+  // Admin-kirjautuminen: /paivita/?admin (ei näkyvää linkkiä)
+  if (params.has('admin')) {
+    showMode('admin');
+    return;
+  }
+
   const resetTok   = params.get('reset');
   if (resetTok) {
     currentResetToken = resetTok;
