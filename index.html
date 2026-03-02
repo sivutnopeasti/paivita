@@ -953,7 +953,7 @@ function injectEditorScript(doc) {
   `;
   doc.head.appendChild(style);
 
-  const editable = 'h1, h2, h3, h4, h5, h6, p, span, li, a, button, td, th, label, div[class*="text"], div[class*="title"], div[class*="desc"], div[class*="content"]';
+  const editable = 'h1, h2, h3, h4, h5, h6, p, span, strong, b, li, a, button, td, th, dt, dd, label, div[class*="text"], div[class*="title"], div[class*="desc"], div[class*="content"]';
   doc.querySelectorAll(editable).forEach(el => {
     const hasTextChild = [...el.childNodes].some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 2);
     if (hasTextChild || el.childElementCount === 0) {
@@ -1033,7 +1033,8 @@ window.addEventListener('message', e => {
 const TYPE_LABELS = {
   h1: 'Pääotsikko', h2: 'Alaotsikko', h3: 'Alaotsikko',
   h4: 'Alaotsikko', h5: 'Alaotsikko', h6: 'Alaotsikko',
-  p: 'Kappale', span: 'Teksti', a: 'Linkki', li: 'Listakohta',
+  p: 'Kappale', span: 'Teksti', strong: 'Lihavoitu otsikko', b: 'Lihavoitu teksti',
+  a: 'Linkki', li: 'Listakohta', dt: 'Termi', dd: 'Kuvaus',
   button: 'Painike', td: 'Taulukko', th: 'Taulukko-otsikko',
   label: 'Tunniste', div: 'Sisältö',
   img: 'Kuva',
