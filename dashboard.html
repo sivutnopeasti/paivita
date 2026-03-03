@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin – Sivutnopeasti</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary:       #1e5bb5;
+      --primary-light: #3a7bd5;
+      --primary-dark:  #0d3a7a;
+      --accent:        #00c6ff;
+      --green:         #16a34a;
+      --orange:        #d97706;
+      --red:           #dc2626;
+      --text:          #1a1a2e;
+      --text-light:    #4a5568;
+      --bg:            #f0f4f8;
+      --card:          #ffffff;
+      --border:        #e2e8f0;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Open Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    h1,h2,h3,button { font-family: 'Montserrat', sans-serif; }
+
+    /* ── Topbar ── */
+    .topbar {
+      height: 52px;
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+      color: #fff;
+      display: flex; align-items: center; padding: 0 1.5rem; gap: 1rem;
+      font-weight: 700; font-size: 1.05rem;
+      position: sticky; top: 0; z-index: 50;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+    .topbar-user { font-size: 0.8rem; font-weight: 400; color: var(--accent); }
+    .logout-btn {
+      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+      color: #fff; padding: 0.25rem 0.85rem; border-radius: 6px;
+      font-size: 0.8rem; cursor: pointer; font-family: 'Open Sans', sans-serif;
+      transition: background 0.15s;
+    }
+    .logout-btn:hover { background: rgba(255,255,255,0.28); }
+
+    /* ── Login overlay ── */
+    .login-overlay {
+      position: fixed; inset: 0; z-index: 100; background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .login-card {
+      background: var(--card); border-radius: 16px; padding: 2.5rem;
+      width: 440px; max-width: 94vw;
+      box-shadow: 0 8px 32px rgba(30,91,181,0.13);
+      border: 1px solid var(--border);
+    }
+    .login-card h2 { font-size: 1.25rem; color: var(--text); margin-bottom: 0.3rem; }
+    .login-card p  { font-size: 0.85rem; color: var(--text-light); margin-bottom: 1.5rem; line-height: 1.55; }
+    .form-group { margin-bottom: 1.1rem; }
+    .form-group label {
+      display: block; font-size: 0.78rem; font-weight: 600;
+      color: var(--text-light); margin-bottom: 0.35rem; letter-spacing: 0.02em;
+    }
+    .form-group input {
+      width: 100%; padding: 0.7rem 0.9rem; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 0.95rem; font-family: 'Open Sans', sans-serif;
+      color: var(--text); transition: border-color 0.15s;
+    }
+    .form-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(30,91,181,0.11); }
+    .form-hint { font-size: 0.76rem; color: var(--text-light); margin-top: 0.3rem; }
+    .btn-primary {
+      width: 100%; padding: 0.75rem; background: var(--primary); color: #fff;
+      border: none; border-radius: 8px; font-size: 0.95rem; font-family: 'Montserrat', sans-serif;
+      font-weight: 700; cursor: pointer; transition: background 0.15s, transform 0.1s;
+      margin-top: 0.5rem;
+    }
+    .btn-primary:hover { background: var(--primary-light); }
+    .btn-primary:active { transform: scale(0.98); }
+    .login-status { font-size: 0.83rem; margin-top: 0.75rem; min-height: 1.2rem; }
+    .login-status.error { color: var(--red); }
+
+    /* ── Main content ── */
+    .main { max-width: 1400px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex; align-items: center; gap: 0.75rem;
+      margin-bottom: 1.25rem; flex-wrap: wrap;
+    }
+    .toolbar h1 { font-size: 1.1rem; color: var(--text); flex: 0 0 auto; }
+    .customer-count { font-size: 0.8rem; color: var(--text-light); font-weight: 400; }
+    .spacer { flex: 1; }
+    .search-input {
+      padding: 0.5rem 0.875rem; border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 0.88rem; font-family: 'Open Sans', sans-serif; color: var(--text);
+      width: 200px; transition: border-color 0.15s;
+    }
+    .search-input:focus { outline: none; border-color: var(--primary); }
+    .refresh-btn {
+      padding: 0.5rem 1rem; background: var(--card); border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 0.85rem; cursor: pointer; font-family: 'Open Sans', sans-serif;
+      color: var(--text); transition: border-color 0.15s, background 0.15s; white-space: nowrap;
+    }
+    .refresh-btn:hover { border-color: var(--primary); background: #f0f4ff; }
+    .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Loading bar ── */
+    .loading-bar {
+      height: 3px; background: var(--border); border-radius: 2px;
+      margin-bottom: 1rem; overflow: hidden; display: none;
+    }
+    .loading-bar.active { display: block; }
+    .loading-bar-fill {
+      height: 100%; background: var(--primary);
+      animation: slide 1.2s ease-in-out infinite;
+    }
+    @keyframes slide {
+      0%   { width: 0%; margin-left: 0%; }
+      50%  { width: 60%; margin-left: 20%; }
+      100% { width: 0%; margin-left: 100%; }
+    }
+
+    /* ── Table ── */
+    .table-wrap {
+      background: var(--card); border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: #f8fafc; }
+    thead th {
+      padding: 0.85rem 1rem; text-align: left; font-size: 0.78rem;
+      font-weight: 700; color: var(--text-light); letter-spacing: 0.04em;
+      text-transform: uppercase; border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    thead th.sortable { cursor: pointer; user-select: none; }
+    thead th.sortable:hover { color: var(--primary); }
+    thead th .sort-icon { margin-left: 0.25rem; opacity: 0.5; }
+    thead th.active .sort-icon { opacity: 1; color: var(--primary); }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f8fafd; }
+    td { padding: 0.875rem 1rem; font-size: 0.875rem; vertical-align: middle; }
+
+    /* ── Cell styles ── */
+    .company-name { font-weight: 600; color: var(--text); }
+    .company-issue { font-size: 0.72rem; color: var(--text-light); margin-top: 0.15rem; }
+    .phone-cell, .email-cell { color: var(--text-light); }
+    .email-cell a { color: var(--primary); text-decoration: none; }
+    .email-cell a:hover { text-decoration: underline; }
+    .site-link {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      color: var(--primary); text-decoration: none; font-size: 0.82rem;
+      padding: 0.25rem 0.6rem; border: 1px solid var(--border); border-radius: 6px;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .site-link:hover { background: #f0f4ff; border-color: var(--primary); }
+    .site-link svg { width: 12px; height: 12px; }
+    .date-cell { color: var(--text); white-space: nowrap; }
+    .date-cell .time-sub { font-size: 0.72rem; color: var(--text-light); display: block; }
+
+    /* ── PR badge ── */
+    .pr-none { color: var(--text-light); font-size: 0.8rem; }
+    .pr-badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      background: #fef3c7; color: #92400e; font-weight: 600;
+      padding: 0.2rem 0.55rem; border-radius: 20px; font-size: 0.78rem;
+      text-decoration: none; transition: background 0.12s;
+    }
+    .pr-badge:hover { background: #fde68a; }
+
+    /* ── Action buttons ── */
+    .action-cell { display: flex; gap: 0.5rem; align-items: center; }
+    .btn-edit {
+      padding: 0.4rem 0.875rem; background: var(--primary); color: #fff;
+      border: none; border-radius: 7px; font-size: 0.8rem; cursor: pointer;
+      font-family: 'Montserrat', sans-serif; font-weight: 600;
+      transition: background 0.13s; white-space: nowrap;
+    }
+    .btn-edit:hover { background: var(--primary-light); }
+    .btn-gh {
+      padding: 0.4rem 0.6rem; background: var(--card); color: var(--text-light);
+      border: 1.5px solid var(--border); border-radius: 7px; font-size: 0.75rem;
+      cursor: pointer; font-family: 'Open Sans', sans-serif;
+      transition: border-color 0.13s, color 0.13s; text-decoration: none;
+      display: inline-flex; align-items: center;
+    }
+    .btn-gh:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* ── Empty / error states ── */
+    .empty-row td {
+      text-align: center; padding: 3rem; color: var(--text-light); font-size: 0.9rem;
+    }
+    .error-msg { color: var(--red); }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;
+    }
+    .stat-chip {
+      background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.4rem 0.875rem; font-size: 0.8rem; color: var(--text-light);
+    }
+    .stat-chip strong { color: var(--text); font-family: 'Montserrat', sans-serif; }
+    .stat-chip.warn strong { color: var(--orange); }
+  </style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar" id="topbar" style="display:none">
+  Sivutnopeasti — Admin
+  <div class="topbar-right">
+    <span class="topbar-user" id="topbar-user"></span>
+    <button class="logout-btn" onclick="doLogout()">Kirjaudu ulos</button>
+  </div>
+</div>
+
+<!-- Login overlay -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-card">
+    <h2>Admin-kirjautuminen</h2>
+    <p>Syötä GitHub-tunnuksesi ja paivita-admin-avain. Tiedot tallennetaan selaimeesi — kirjautuminen tarvitaan vain kerran.</p>
+    <div class="form-group">
+      <label>GitHub Personal Access Token</label>
+      <input type="password" id="pat-input" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
+      <div class="form-hint">Oikeudet: <code>repo</code> (read-only riittää issueihin ja PR:iin)</div>
+    </div>
+    <div class="form-group">
+      <label>Paivita admin-avain</label>
+      <input type="password" id="adminkey-input" placeholder="••••••••••••••••" autocomplete="off">
+      <div class="form-hint">Sama avain jonka käytät paivita-sivustolla admin-kirjautumisessa</div>
+    </div>
+    <button class="btn-primary" id="login-btn" onclick="doLogin()">Kirjaudu</button>
+    <div class="login-status" id="login-status"></div>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main" id="main-content" style="display:none">
+  <div class="toolbar">
+    <h1>Asiakkaat <span class="customer-count" id="customer-count"></span></h1>
+    <div class="spacer"></div>
+    <input type="text" class="search-input" id="search-input" placeholder="Hae yritystä..." oninput="filterTable()">
+    <button class="refresh-btn" id="refresh-btn" onclick="loadCustomers()">&#8635; Päivitä</button>
+  </div>
+
+  <div class="loading-bar" id="loading-bar"><div class="loading-bar-fill"></div></div>
+
+  <div class="stats-bar" id="stats-bar"></div>
+
+  <div class="table-wrap">
+    <table id="customer-table">
+      <thead>
+        <tr>
+          <th>Yritys</th>
+          <th>Puhelin</th>
+          <th>Sähköposti</th>
+          <th>Sivusto</th>
+          <th class="sortable active" onclick="sortBy('date')" id="th-date">
+            Päivitetty <span class="sort-icon" id="sort-date">&#8595;</span>
+          </th>
+          <th>PR</th>
+          <th>Toiminnot</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr class="empty-row"><td colspan="7">Ladataan...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ─── Config ──────────────────────────────────────────────────────
+const TILAUKSET_REPO = 'sivutnopeasti/tilaukset';
+const PAIVITA_URL    = 'https://sivutnopeasti.github.io/paivita/';
+const LS_PAT         = 'sivutnopeasti_github_pat';
+const LS_ADMIN_KEY   = 'sivutnopeasti_admin_key';
+
+// ─── State ───────────────────────────────────────────────────────
+let githubPat   = null;
+let adminKey    = null;
+let customers   = [];
+let sortDir     = 'desc';
+
+// ─── Init ────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  const storedPat = localStorage.getItem(LS_PAT);
+  const storedKey = localStorage.getItem(LS_ADMIN_KEY);
+  if (storedPat && storedKey) {
+    githubPat = storedPat;
+    adminKey  = storedKey;
+    showMain();
+    loadCustomers();
+  }
+  document.getElementById('pat-input').addEventListener('keydown',      e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('adminkey-input').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+});
+
+// ─── Auth ────────────────────────────────────────────────────────
+async function doLogin() {
+  const pat  = document.getElementById('pat-input').value.trim();
+  const key  = document.getElementById('adminkey-input').value.trim();
+  const btn  = document.getElementById('login-btn');
+  const stat = document.getElementById('login-status');
+
+  if (!pat || !key) { stat.className = 'login-status error'; stat.textContent = 'Täytä molemmat kentät.'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Tarkistetaan...';
+  stat.className = 'login-status'; stat.textContent = '';
+
+  try {
+    const r = await ghFetch('https://api.github.com/user', pat);
+    if (!r.ok) throw new Error('GitHub API ' + r.status + ' – tarkista PAT');
+    const user = await r.json();
+
+    githubPat = pat;
+    adminKey  = key;
+    localStorage.setItem(LS_PAT, pat);
+    localStorage.setItem(LS_ADMIN_KEY, key);
+    document.getElementById('topbar-user').textContent = user.login;
+    showMain();
+    loadCustomers();
+  } catch (e) {
+    stat.className = 'login-status error';
+    stat.textContent = 'Virhe: ' + e.message;
+    btn.disabled = false;
+    btn.textContent = 'Kirjaudu';
+  }
+}
+
+function doLogout() {
+  localStorage.removeItem(LS_PAT);
+  localStorage.removeItem(LS_ADMIN_KEY);
+  githubPat = null; adminKey = null; customers = [];
+  document.getElementById('main-content').style.display = 'none';
+  document.getElementById('topbar').style.display = 'none';
+  document.getElementById('login-overlay').style.display = 'flex';
+  document.getElementById('pat-input').value = '';
+  document.getElementById('adminkey-input').value = '';
+  document.getElementById('login-status').textContent = '';
+  document.getElementById('login-btn').disabled = false;
+  document.getElementById('login-btn').textContent = 'Kirjaudu';
+}
+
+function showMain() {
+  document.getElementById('login-overlay').style.display = 'none';
+  document.getElementById('topbar').style.display = 'flex';
+  document.getElementById('main-content').style.display = 'block';
+}
+
+// ─── GitHub API helpers ──────────────────────────────────────────
+function ghFetch(url, pat) {
+  return fetch(url, {
+    headers: {
+      'Authorization': 'Bearer ' + (pat || githubPat),
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  });
+}
+
+async function ghGetAll(path, perPage) {
+  perPage = perPage || 100;
+  const results = [];
+  let page = 1;
+  while (true) {
+    const sep = path.includes('?') ? '&' : '?';
+    const r = await ghFetch('https://api.github.com' + path + sep + 'per_page=' + perPage + '&page=' + page);
+    if (!r.ok) break;
+    const data = await r.json();
+    if (!Array.isArray(data) || data.length === 0) break;
+    results.push(...data);
+    if (data.length < perPage) break;
+    page++;
+  }
+  return results;
+}
+
+// ─── Parse helpers ───────────────────────────────────────────────
+function parseIssueBody(body) {
+  const get = function(key) {
+    const m = body && body.match(new RegExp('\\|\\s*\\*{0,2}' + key + '\\*{0,2}\\s*\\|\\s*(.+?)\\s*\\|', 'i'));
+    return m ? m[1].replace(/\*\*/g, '').trim() : '';
+  };
+  return {
+    company: get('Yritys') || get('yritys'),
+    phone:   get('Puhelinnumero') || get('puhelin'),
+    email:   get('S.hk.posti') || get('sahkoposti') || get('email'),
+  };
+}
+
+function parseBotComment(comments) {
+  for (let i = comments.length - 1; i >= 0; i--) {
+    const c = comments[i];
+    if (!c.body) continue;
+    const repoM = c.body.match(/\*\*Repo:\*\*\s*https:\/\/github\.com\/([^\s\)]+)/);
+    if (!repoM) continue;
+    const repo  = repoM[1].replace(/[^a-zA-Z0-9\-_./]/g, '');
+    const siteM = c.body.match(/\*\*Sivusto:\*\*\s*(\S+)/);
+    const idM   = c.body.match(/\*\*Site ID:\*\*\s*`([^`]+)`/);
+    return {
+      repo:    repo,
+      siteUrl: siteM ? siteM[1] : 'https://sivutnopeasti.github.io/' + repo.split('/')[1] + '/',
+      siteId:  idM ? idM[1] : '',
+    };
+  }
+  return null;
+}
+
+// ─── Load customers ──────────────────────────────────────────────
+async function loadCustomers() {
+  const btn = document.getElementById('refresh-btn');
+  const bar = document.getElementById('loading-bar');
+  btn.disabled = true;
+  bar.classList.add('active');
+  setTableBody('<tr class="empty-row"><td colspan="7">Ladataan asiakkaita...</td></tr>');
+  document.getElementById('stats-bar').innerHTML = '';
+
+  try {
+    const issues = await ghGetAll('/repos/' + TILAUKSET_REPO + '/issues?state=all');
+    const tasks  = issues.map(function(issue) { return buildCustomer(issue); });
+    const results = await Promise.allSettled(tasks);
+
+    customers = results
+      .filter(function(r) { return r.status === 'fulfilled' && r.value; })
+      .map(function(r) { return r.value; });
+
+    sortCustomers();
+    renderTable();
+    renderStats();
+  } catch (e) {
+    setTableBody('<tr class="empty-row"><td colspan="7" class="error-msg">Virhe: ' + e.message + '</td></tr>');
+  } finally {
+    btn.disabled = false;
+    bar.classList.remove('active');
+  }
+}
+
+async function buildCustomer(issue) {
+  let comments = [];
+  try {
+    comments = await ghGetAll('/repos/' + TILAUKSET_REPO + '/issues/' + issue.number + '/comments');
+  } catch (e) { return null; }
+
+  const botInfo = parseBotComment(comments);
+  if (!botInfo) return null;
+
+  const contact  = parseIssueBody(issue.body);
+  const repoName = botInfo.repo;
+  let lastCommit = null;
+  let openPRs    = [];
+
+  await Promise.allSettled([
+    ghFetch('https://api.github.com/repos/' + repoName + '/commits?per_page=1')
+      .then(function(r) { return r.ok ? r.json() : []; })
+      .then(function(data) { if (data[0]) lastCommit = data[0].commit.committer.date; }),
+    ghFetch('https://api.github.com/repos/' + repoName + '/pulls?state=open&per_page=20')
+      .then(function(r) { return r.ok ? r.json() : []; })
+      .then(function(data) { openPRs = Array.isArray(data) ? data : []; }),
+  ]);
+
+  const imagePRs = openPRs.filter(function(pr) {
+    return /kuvap.{0,10}ivitys|image.{0,5}update/i.test(pr.title);
+  });
+
+  return {
+    issueNumber: issue.number,
+    company:     contact.company || issue.title.replace(/^[^\w]*/, '').replace(/\s+Issue.*$/, '').trim(),
+    phone:       contact.phone,
+    email:       contact.email,
+    repo:        repoName,
+    siteUrl:     botInfo.siteUrl,
+    siteId:      botInfo.siteId,
+    lastCommit:  lastCommit || issue.created_at,
+    isCreation:  !lastCommit,
+    openPRs:     imagePRs,
+    ghPRsUrl:    'https://github.com/' + repoName + '/pulls',
+  };
+}
+
+// ─── Sort ────────────────────────────────────────────────────────
+function sortCustomers() {
+  customers.sort(function(a, b) {
+    const da = new Date(a.lastCommit);
+    const db = new Date(b.lastCommit);
+    return sortDir === 'desc' ? db - da : da - db;
+  });
+}
+
+function sortBy(col) {
+  if (col === 'date') {
+    sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+    document.getElementById('sort-date').textContent = sortDir === 'desc' ? '\u2193' : '\u2191';
+    sortCustomers();
+    renderTable();
+  }
+}
+
+// ─── Filter ──────────────────────────────────────────────────────
+function filterTable() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const rows = document.querySelectorAll('#table-body tr[data-search]');
+  let visible = 0;
+  rows.forEach(function(row) {
+    const match = row.dataset.search.includes(q);
+    row.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+  document.getElementById('customer-count').textContent = '(' + visible + ' / ' + customers.length + ')';
+}
+
+// ─── Render ──────────────────────────────────────────────────────
+function renderTable() {
+  const tbody = document.getElementById('table-body');
+  if (customers.length === 0) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Ei asiakkaita löydetty.</td></tr>';
+    document.getElementById('customer-count').textContent = '';
+    return;
+  }
+
+  tbody.innerHTML = customers.map(function(c) {
+    const dateStr  = formatDate(c.lastCommit);
+    const timeStr  = formatTime(c.lastCommit);
+    const label    = c.isCreation ? 'Luotu' : 'Päivitetty';
+    const prCell   = c.openPRs.length === 0
+      ? '<span class="pr-none">\u2013</span>'
+      : '<a class="pr-badge" href="' + c.ghPRsUrl + '" target="_blank" rel="noopener">\u26A0 ' + c.openPRs.length + ' kuva-PR</a>';
+    const search   = (c.company + ' ' + c.phone + ' ' + c.email).toLowerCase();
+    const repoShort = c.repo.split('/')[1] || c.repo;
+
+    return '<tr data-search="' + escHtml(search) + '">' +
+      '<td>' +
+        '<div class="company-name">' + escHtml(c.company || '\u2014') + '</div>' +
+        '<div class="company-issue">#' + c.issueNumber + ' \u00B7 ' + escHtml(repoShort) + '</div>' +
+      '</td>' +
+      '<td class="phone-cell">' + escHtml(c.phone || '\u2014') + '</td>' +
+      '<td class="email-cell">' + (c.email ? '<a href="mailto:' + escHtml(c.email) + '">' + escHtml(c.email) + '</a>' : '\u2014') + '</td>' +
+      '<td>' +
+        (c.siteUrl
+          ? '<a class="site-link" href="' + escHtml(c.siteUrl) + '" target="_blank" rel="noopener">' +
+            '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V9M9 1h6m0 0v6m0-6L7 9"/></svg>' +
+            'Avaa</a>'
+          : '\u2014') +
+      '</td>' +
+      '<td class="date-cell">' + dateStr + '<span class="time-sub">' + label + ' \u00B7 ' + timeStr + '</span></td>' +
+      '<td>' + prCell + '</td>' +
+      '<td>' +
+        '<div class="action-cell">' +
+          (c.siteId
+            ? '<button class="btn-edit" onclick="openEditor(' + JSON.stringify(c.siteId) + ')">Muokkaa</button>'
+            : '<button class="btn-edit" disabled style="opacity:0.4">Muokkaa</button>') +
+          '<a class="btn-gh" href="https://github.com/' + escHtml(c.repo) + '" target="_blank" rel="noopener" title="GitHub-repo">GH</a>' +
+        '</div>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+
+  document.getElementById('customer-count').textContent = '(' + customers.length + ' asiakasta)';
+}
+
+function renderStats() {
+  const totalPR = customers.reduce(function(s, c) { return s + c.openPRs.length; }, 0);
+  document.getElementById('stats-bar').innerHTML =
+    '<div class="stat-chip"><strong>' + customers.length + '</strong> asiakasta</div>' +
+    '<div class="stat-chip ' + (totalPR > 0 ? 'warn' : '') + '"><strong>' + totalPR + '</strong> avoin kuva-PR' + (totalPR !== 1 ? ':t\u00E4' : '') + '</div>';
+}
+
+function setTableBody(html) {
+  document.getElementById('table-body').innerHTML = html;
+  document.getElementById('customer-count').textContent = '';
+}
+
+// ─── Editor SSO ─────────────────────────────────────────────────
+function openEditor(siteId) {
+  localStorage.setItem(LS_ADMIN_KEY, adminKey);
+  const url = PAIVITA_URL + '?admin&sid=' + encodeURIComponent(siteId);
+  window.open(url, '_blank', 'noopener');
+}
+
+// ─── Formatting ──────────────────────────────────────────────────
+function formatDate(iso) {
+  if (!iso) return '\u2014';
+  return new Date(iso).toLocaleDateString('fi-FI', { day: 'numeric', month: 'numeric', year: 'numeric' });
+}
+function formatTime(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleTimeString('fi-FI', { hour: '2-digit', minute: '2-digit' });
+}
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
