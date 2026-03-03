@@ -1539,7 +1539,15 @@ async function submitChanges() {
       throw new Error(errMsg);
     }
 
-    showStatus(status, 'ok', '✓ Lähetetty! Sivusto päivittyy muutamassa minuutissa.');
+    const hasImageUpdates = Object.keys(imageChanges).length > 0
+      || certLogos.length > 0
+      || newSiteImages.length > 0
+      || pendingChanges.some(c => c.type === 'image-delete');
+    if (hasImageUpdates) {
+      showStatus(status, 'ok', '✓ Lähetetty! Kuvapäivitykset tarkistetaan ennen julkaisua – tähän voi mennä muutama vuorokausi.');
+    } else {
+      showStatus(status, 'ok', '✓ Lähetetty! Sivusto päivittyy muutamassa minuutissa.');
+    }
     pendingChanges = [];
     certLogos = [];
     newSiteImages = [];
