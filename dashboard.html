@@ -401,7 +401,7 @@ function renderTable() {
       '<td>' + prCell + '</td>' +
       '<td><div class="action-cell">' +
         (c.siteId
-          ? '<button class="btn-edit" onclick="openEditor(' + JSON.stringify(c.siteId) + ')">Muokkaa</button>'
+          ? '<button class="btn-edit" data-sid="' + escHtml(c.siteId) + '" onclick="openEditor(this.dataset.sid)">Muokkaa</button>'
           : '<button class="btn-edit" disabled style="opacity:0.4">Muokkaa</button>') +
         '<a class="btn-gh" href="https://github.com/' + escHtml(c.repo) + '" target="_blank" rel="noopener" title="GitHub">GH</a>' +
       '</div></td>' +
