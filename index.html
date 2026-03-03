@@ -653,6 +653,14 @@ window.addEventListener('load', async () => {
   // Admin-kirjautuminen: /paivita/?admin (ei näkyvää linkkiä)
   if (params.has('admin')) {
     showMode('admin');
+    // SSO auto-fill: ?admin&sid=SITE_ID pre-täyttää ja kirjautuu automaattisesti
+    const sidParam = params.get('sid');
+    if (sidParam) document.getElementById('admin-siteid').value = sidParam;
+    const savedKey = localStorage.getItem('sivutnopeasti_admin_key');
+    if (savedKey && sidParam) {
+      document.getElementById('admin-key').value = savedKey;
+      setTimeout(() => doAdminLogin(), 150);
+    }
     return;
   }
 
