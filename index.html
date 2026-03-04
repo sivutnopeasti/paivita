@@ -1025,6 +1025,12 @@ function injectEditorScript(doc) {
       el.dataset.paivitaEditable = 'text';
     }
   });
+  // Merkitse myös kaikki leaf-divit (stat-number, stat-label ym. joilla ei ole lapsi-elementtejä)
+  doc.querySelectorAll('div, section > *, article, header, footer').forEach(el => {
+    if (!el.dataset.paivitaEditable && el.childElementCount === 0 && el.textContent.trim().length > 0) {
+      el.dataset.paivitaEditable = 'text';
+    }
+  });
   doc.querySelectorAll('img').forEach(el => {
     el.dataset.paivitaEditable = 'image';
   });
@@ -1115,7 +1121,7 @@ function injectEditorScript(doc) {
       source:   'paivita-editor',
       type,
       tagName:  target.tagName.toLowerCase(),
-      text:     target.textContent.trim(),
+      text:     (target.dataset.target !== undefined ? target.dataset.target : null) ?? target.textContent.trim(),
       src:      target.src  || null,
       alt:      target.alt  || null,
       selector,
@@ -1302,7 +1308,10 @@ function applyInIframe(selector, type, value) {
     const el  = doc.querySelector(selector);
     if (!el) return;
     if (type === 'image') { el.src = value; }
-    else { el.textContent = value; }
+    else {
+      el.textContent = value;
+      if (el.dataset.target !== undefined) el.dataset.target = value;
+    }
   } catch (_) {}
 }
 
