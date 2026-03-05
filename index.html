@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fi">
 <head>
   <meta charset="UTF-8">
@@ -388,10 +388,47 @@
     .cert-modal-btns { display: flex; gap: 0.5rem; }
     .cert-modal-btns .btn-primary { flex: 1; }
     .cert-modal-btns .btn-secondary { flex: 1; }
+
+    /* -- Lohkojen lisays -- */
+    .block-picker-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      display: none; align-items: center; justify-content: center; z-index: 500;
+    }
+    .block-picker-overlay.active { display: flex; }
+    .block-picker {
+      background: #fff; border-radius: 14px; padding: 1.5rem;
+      width: 440px; max-width: 94vw;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    }
+    .block-picker h3 { font-size: 1rem; color: var(--text); margin-bottom: 1rem; font-family: 'Montserrat', sans-serif; }
+    .block-picker-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;
+    }
+    .block-picker-item {
+      border: 1.5px solid var(--border); border-radius: 8px; padding: 0.75rem;
+      cursor: pointer; text-align: center; transition: all 0.15s; background: #fff;
+    }
+    .block-picker-item:hover { border-color: var(--primary); background: var(--bg-warm); }
+    .block-picker-item-icon { font-size: 1.5rem; margin-bottom: 0.35rem; }
+    .block-picker-item-label { font-size: 0.78rem; font-weight: 600; color: var(--text); font-family: 'Montserrat', sans-serif; }
+    .block-picker-cancel {
+      width: 100%; padding: 0.55rem; border: 1px solid var(--border);
+      border-radius: 8px; background: #fff; color: var(--text-light);
+      font-size: 0.85rem; cursor: pointer; font-family: 'Montserrat', sans-serif; font-weight: 600;
+    }
+    .block-picker-cancel:hover { border-color: var(--primary); color: var(--primary); }
   </style>
 </head>
 <body>
 
+<!-- Lohkojen lisays -modal -->
+<div class="block-picker-overlay" id="blockPickerOverlay">
+  <div class="block-picker">
+    <h3>Lisaa lohko</h3>
+    <div class="block-picker-grid" id="blockPickerGrid"></div>
+    <button class="block-picker-cancel" onclick="closeBlockPicker()">Peruuta</button>
+  </div>
+</div>
 <!-- Sertifikaatin nimi -modal -->
 <div class="cert-modal-overlay" id="certModalOverlay">
   <div class="cert-modal">
@@ -616,6 +653,46 @@
 
 <script>
 const WORKER_URL = 'https://paivita.kappe-gm.workers.dev';
+// â”€â”€â”€ Lohkopohjat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const BLOCK_TEMPLATES = [
+  {
+    id: 'text',
+    icon: '&#128221;',
+    label: 'Tekstilohko',
+    html: '<section style="padding:4rem 0;background:#fff;"><div style="max-width:900px;margin:0 auto;padding:0 1.5rem;text-align:center;"><h2 style="font-size:1.8rem;margin-bottom:1rem;font-family:inherit;">Otsikko</h2><p style="font-size:1.05rem;color:#4a5568;line-height:1.7;">Kirjoita tekstisi tahan.</p></div></section>',
+  },
+  {
+    id: 'cta',
+    icon: '&#128226;',
+    label: 'Toimintakutsu',
+    html: '<section style="padding:4rem 0;background:var(--primary,#1e5bb5);color:#fff;text-align:center;"><div style="max-width:700px;margin:0 auto;padding:0 1.5rem;"><h2 style="font-size:1.8rem;margin-bottom:1rem;font-family:inherit;">Otsikko tahan</h2><p style="margin-bottom:2rem;opacity:0.9;">Kuvailuteksti tahan.</p><a href="tel:" style="display:inline-block;padding:0.875rem 2.5rem;background:#fff;color:var(--primary,#1e5bb5);border-radius:8px;font-weight:700;text-decoration:none;font-family:inherit;">Ota yhteytta</a></div></section>',
+  },
+  {
+    id: 'cards',
+    icon: '&#127183;',
+    label: 'Korttirivisto',
+    html: '<section style="padding:4rem 0;background:#f8fafc;"><div style="max-width:1100px;margin:0 auto;padding:0 1.5rem;"><h2 style="font-size:1.8rem;text-align:center;margin-bottom:2.5rem;font-family:inherit;">Palvelut</h2><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;"><div style="background:#fff;border-radius:12px;padding:1.75rem;box-shadow:0 2px 12px rgba(0,0,0,0.06);"><div style="font-size:2rem;margin-bottom:0.75rem;">&#10003;</div><h3 style="font-size:1.05rem;margin-bottom:0.5rem;font-family:inherit;">Palvelu 1</h3><p style="color:#4a5568;font-size:0.9rem;line-height:1.6;">Kuvaus tahan.</p></div><div style="background:#fff;border-radius:12px;padding:1.75rem;box-shadow:0 2px 12px rgba(0,0,0,0.06);"><div style="font-size:2rem;margin-bottom:0.75rem;">&#10003;</div><h3 style="font-size:1.05rem;margin-bottom:0.5rem;font-family:inherit;">Palvelu 2</h3><p style="color:#4a5568;font-size:0.9rem;line-height:1.6;">Kuvaus tahan.</p></div><div style="background:#fff;border-radius:12px;padding:1.75rem;box-shadow:0 2px 12px rgba(0,0,0,0.06);"><div style="font-size:2rem;margin-bottom:0.75rem;">&#10003;</div><h3 style="font-size:1.05rem;margin-bottom:0.5rem;font-family:inherit;">Palvelu 3</h3><p style="color:#4a5568;font-size:0.9rem;line-height:1.6;">Kuvaus tahan.</p></div></div></div></section>',
+  },
+  {
+    id: 'image-text',
+    icon: '&#128247;',
+    label: 'Kuva + teksti',
+    html: '<section style="padding:4rem 0;background:#fff;"><div style="max-width:1100px;margin:0 auto;padding:0 1.5rem;display:flex;align-items:center;gap:3rem;flex-wrap:wrap;"><div style="flex:1;min-width:240px;"><img src="https://placehold.co/500x380/e2e8f0/94a3b8?text=Kuva" alt="" style="width:100%;border-radius:12px;display:block;"></div><div style="flex:1;min-width:240px;"><h2 style="font-size:1.8rem;margin-bottom:1rem;font-family:inherit;">Otsikko</h2><p style="color:#4a5568;font-size:1rem;line-height:1.7;">Teksti tahan.</p></div></div></section>',
+  },
+  {
+    id: 'divider',
+    icon: '&#10135;',
+    label: 'Erotin',
+    html: '<section style="padding:1.5rem 0;background:#fff;"><div style="max-width:900px;margin:0 auto;padding:0 1.5rem;"><hr style="border:none;border-top:2px solid #e2e8f0;"></div></section>',
+  },
+  {
+    id: 'spacer',
+    icon: '&#8597;',
+    label: 'Tyhja vali',
+    html: '<section style="padding:3rem 0;background:#fff;"></section>',
+  },
+];
+
 const GH_ORG     = 'sivutnopeasti';
 const IMGBB_KEY  = '%%PIC_API%%';
 
@@ -634,6 +711,7 @@ let certNameCb      = null;
 let selectedEl      = null;
 let changeIdCounter = 0;
 let hasUnsavedEdit  = false;
+let currentInsertAfterIndex = null;  // pending block insert position
 
 // ─── Auth-näkymän vaihto ───────────────────────────────────────
 
@@ -1127,7 +1205,43 @@ function injectEditorScript(doc) {
       selector,
     }, '*');
   }, true);
-}
+  // Lisaa "+" zonet section-elementtien valiin
+  (function addInsertZones() {
+    const allSecs = [...doc.querySelectorAll('section')];
+    const topSecs = allSecs.filter(s => {
+      let p = s.parentElement;
+      while (p && p !== doc.body) {
+        if (p.tagName === 'SECTION') return false;
+        p = p.parentElement;
+      }
+      return true;
+    });
+    topSecs.forEach((sec, i) => {
+      const zone = doc.createElement('div');
+      zone.dataset.paivitaInsertZone = String(i);
+      zone.style.cssText = 'position:relative;height:20px;margin:-10px 0;display:flex;align-items:center;z-index:9997;pointer-events:all;';
+      const inner = doc.createElement('div');
+      inner.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;opacity:0;transition:opacity 0.18s;';
+      const lineL = doc.createElement('div');
+      lineL.style.cssText = 'flex:1;height:2px;background:#1e5bb5;';
+      const plusBtn = doc.createElement('button');
+      plusBtn.style.cssText = 'flex-shrink:0;width:26px;height:26px;border-radius:50%;background:#1e5bb5;color:#fff;border:2px solid #fff;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(30,91,181,0.5);pointer-events:all;line-height:1;';
+      plusBtn.textContent = '+';
+      const lineR = doc.createElement('div');
+      lineR.style.cssText = 'flex:1;height:2px;background:#1e5bb5;';
+      inner.appendChild(lineL);
+      inner.appendChild(plusBtn);
+      inner.appendChild(lineR);
+      zone.appendChild(inner);
+      zone.addEventListener('mouseenter', () => { inner.style.opacity = '1'; });
+      zone.addEventListener('mouseleave', () => { inner.style.opacity = '0'; });
+      plusBtn.addEventListener('click', ev => {
+        ev.preventDefault(); ev.stopPropagation();
+        window.parent.postMessage({ source: 'paivita-editor', type: 'block-insert-request', afterIndex: i }, '*');
+      });
+      sec.after(zone);
+    });
+  })();}
 
 function buildSelector(el, doc) {
   const path = [];
@@ -1156,6 +1270,10 @@ window.addEventListener('message', e => {
   if (e.data?.source !== 'paivita-editor') return;
   if (e.data.type === 'image-delete') {
     handleImageDelete(e.data);
+    return;
+  }
+  if (e.data.type === 'block-insert-request') {
+    openBlockPicker(e.data.afterIndex);
     return;
   }
   if (hasUnsavedEdit) {
@@ -1319,6 +1437,7 @@ function applyInIframe(selector, type, value) {
 
 function updateSubmitState() {
   const hasChanges = pendingChanges.length > 0 || certLogos.length > 0 || newSiteImages.length > 0;
+  const hasBlockInserts = pendingChanges.some(c => c.type === 'block-insert');
   document.getElementById('submit-btn').disabled = !hasChanges;
   const undoBtn = document.getElementById('undo-btn');
   if (undoBtn) undoBtn.disabled = pendingChanges.length === 0;
@@ -1346,7 +1465,17 @@ function renderChangesList() {
 
 function removeChange(id) {
   const c = pendingChanges.find(x => x.id === id);
-  if (c && c.selector) applyInIframe(c.selector, c.type === 'image-delete' ? 'image' : c.type, c.oldValue);
+  if (c) {
+    if (c.type === 'block-insert' && c.insertId) {
+      try {
+        const iDoc = document.getElementById('site-iframe').contentDocument;
+        const el = iDoc.querySelector(`[data-paivita-insert-id="${c.insertId}"]`);
+        if (el) el.remove();
+      } catch (_) {}
+    } else if (c.selector) {
+      applyInIframe(c.selector, c.type === 'image-delete' ? 'image' : c.type, c.oldValue);
+    }
+  }
   pendingChanges = pendingChanges.filter(x => x.id !== id);
   renderChangesList();
 }
@@ -1354,7 +1483,13 @@ function removeChange(id) {
 function undoLastChange() {
   if (!pendingChanges.length) return;
   const last = pendingChanges.pop();
-  if (last.type === 'image-delete') {
+  if (last.type === 'block-insert' && last.insertId) {
+    try {
+      const iDoc = document.getElementById('site-iframe').contentDocument;
+      const el = iDoc.querySelector(`[data-paivita-insert-id="${last.insertId}"]`);
+      if (el) el.remove();
+    } catch (_) {}
+  } else if (last.type === 'image-delete') {
     try {
       const doc = document.getElementById('site-iframe').contentDocument;
       const el  = doc.querySelector(last.selector);
@@ -1483,6 +1618,65 @@ function confirmCertName() {
 function closeCertModal() {
   document.getElementById('certModalOverlay').classList.remove('active');
 }
+// â”€â”€â”€ Lohkojen lisays â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+function openBlockPicker(afterIndex) {
+  currentInsertAfterIndex = afterIndex;
+  const grid = document.getElementById('blockPickerGrid');
+  grid.innerHTML = BLOCK_TEMPLATES.map(t => `
+    <button class="block-picker-item" onclick="selectBlock('${t.id}')">
+      <div class="block-picker-item-icon">${t.icon}</div>
+      <div class="block-picker-item-label">${t.label}</div>
+    </button>`).join('');
+  document.getElementById('blockPickerOverlay').classList.add('active');
+}
+
+function closeBlockPicker() {
+  document.getElementById('blockPickerOverlay').classList.remove('active');
+  currentInsertAfterIndex = null;
+}
+
+function selectBlock(blockId) {
+  closeBlockPicker();
+  const tpl = BLOCK_TEMPLATES.find(t => t.id === blockId);
+  if (!tpl || currentInsertAfterIndex === null) return;
+
+  const insertIdx = currentInsertAfterIndex;
+  currentInsertAfterIndex = null;
+
+  // Insert visually in iframe
+  const insertId = 'pi-' + (++changeIdCounter);
+  try {
+    const iDoc = document.getElementById('site-iframe').contentDocument;
+    const zone = iDoc.querySelector(`[data-paivita-insert-zone="${insertIdx}"]`);
+    if (zone) {
+      const wrapper = iDoc.createElement('div');
+      wrapper.innerHTML = tpl.html.trim();
+      const newEl = wrapper.firstElementChild;
+      if (newEl) {
+        newEl.dataset.paivitaInsertId = insertId;
+        zone.after(newEl);
+      }
+    }
+  } catch (_) {}
+
+  pendingChanges.push({
+    id: parseInt(insertId.replace('pi-', '')),
+    type: 'block-insert',
+    label: 'Lohko: ' + tpl.label,
+    blockId: tpl.id,
+    blockLabel: tpl.label,
+    blockHtml: tpl.html,
+    afterIndex: insertIdx,
+    insertId,
+    oldValue: '',
+    newValue: tpl.html,
+    selector: null,
+    tagName: 'section',
+  });
+  renderChangesList();
+}
+
 
 // ─── Lähetys workerille (autentikoitu) ────────────────────────
 
@@ -1498,12 +1692,14 @@ async function submitChanges() {
 
   const imageChanges = {};
   const textChanges  = {};
-  const lines        = pendingChanges.length > 0 ? ['Visuaaliset muutokset (tee täsmälleen nämä muutokset):\n'] : [];
+  const nonBlockChanges = pendingChanges.filter(c => c.type !== 'block-insert');
+  const lines        = nonBlockChanges.length > 0 ? ['Visuaaliset muutokset (tee täsmälleen nämä muutokset):\n'] : [];
 
   let imgIdx = 0;
   let txtIdx = 0;
 
   pendingChanges.forEach((c, i) => {
+    if (c.type === 'block-insert') return;  // handled separately
     if (c.type === 'image-delete') {
       lines.push(`${i+1}. POISTA KUVA: Poista img-elementti jonka src alkaa "${(c.oldValue||'').substring(0,80)}" kokonaan sivulta. Älä korvaa sitä millään.`);
     } else if (c.type === 'image') {
@@ -1525,6 +1721,17 @@ async function submitChanges() {
     });
   }
 
+  const blockInserts = pendingChanges.filter(c => c.type === 'block-insert');
+  if (blockInserts.length > 0) {
+    if (lines.length > 0) lines.push('');
+    lines.push('## Uudet HTML-lohkot (lisaa sivulle):');
+    blockInserts.forEach((b, j) => {
+      lines.push(`${j+1}. Lisaa "${b.blockLabel}" section #${b.afterIndex + 1} jalkeen:`);
+      lines.push('--- HTML ---');
+      lines.push(b.blockHtml);
+      lines.push('--- END ---');
+    });
+  }
   const freeText = lines.join('\n');
 
   // Käytä sessioon rekisteröityä site_id:tä (ei site-config.json:n arvoa),
