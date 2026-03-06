@@ -1267,7 +1267,7 @@ function injectEditorScript(doc) {
       source:   'paivita-editor',
       type,
       tagName:  target.tagName.toLowerCase(),
-      text:     (target.dataset.target !== undefined ? target.dataset.target : null) ?? target.textContent.trim(),
+      text:     (function(){ if(target.dataset.target!==undefined) return target.dataset.target; const c=target.cloneNode(true); c.querySelectorAll('br').forEach(function(b){b.replaceWith('\n');}); return c.textContent.trim(); })(),
       src:      target.src  || null,
       alt:      target.alt  || null,
       selector,
@@ -1437,16 +1437,14 @@ function showElementEditor(data) {
     });
 
   } else {
-    const isShort = data.text.length < 80;
     controls.innerHTML = `
       <div class="ctrl-group">
         <label>Muokkaa tekstiä</label>
-        ${isShort
-          ? `<input type="text" id="new-text" value="${data.text.replace(/"/g, '&quot;')}">`
-          : `<textarea id="new-text" rows="5">${data.text}</textarea>`}
+        <textarea id="new-text" rows="4" style="resize:vertical;min-height:80px;"></textarea>
       </div>`;
 
     const newTextEl = document.getElementById('new-text');
+    newTextEl.value = data.text;
     newTextEl.addEventListener('input', e => {
       hasUnsavedEdit = e.target.value.trim() !== selectedEl.text;
       applyInIframe(selectedEl.selector, 'text', e.target.value);
@@ -1509,7 +1507,8 @@ function applyInIframe(selector, type, value) {
     if (!el) return;
     if (type === 'image') { el.src = value; }
     else {
-      el.textContent = value;
+      const esc = value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      el.innerHTML = esc.replace(/\n/g,'<br>');
       if (el.dataset.target !== undefined) el.dataset.target = value;
     }
   } catch (_) {}
