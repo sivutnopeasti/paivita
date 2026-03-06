@@ -1783,19 +1783,34 @@ function selectBlock(blockId) {
         const hSel = iDoc.createElement('select');
         hSel.title='Otsikon koko'; hSel.style.cssText='font-size:11px;padding:2px 4px;border:1px solid #e2e8f0;border-radius:4px;background:#fff;height:24px;font-weight:700;color:#1e5bb5;cursor:pointer;';
         const curH = newEl.querySelector('h1,h2,h3,h4,h5,h6');
-        var hSizes={'h1':'15px','h2':'12px','h3':'10px','h4':'9px'};
-        [['h1','H1 — Iso otsikko'],['h2','H2 — Otsikko'],['h3','H3 — Alaotsikko'],['h4','H4 — Pienin']].forEach(function(p){ var o=iDoc.createElement('option'); o.value=p[0]; o.textContent=p[1]; if(curH&&curH.tagName.toLowerCase()===p[0])o.selected=true; hSel.appendChild(o); });
-        hSel.style.fontSize = hSizes[curH ? curH.tagName.toLowerCase() : 'h2'] || '11px';
+        [['h1','Pääotsikko'],['h2','Väliotsikko'],['h3','Alaotsikko'],['h4','Pienin']].forEach(function(p){ var o=iDoc.createElement('option'); o.value=p[0]; o.textContent=p[1]; if(curH&&curH.tagName.toLowerCase()===p[0])o.selected=true; hSel.appendChild(o); });
         hSel.addEventListener('change', () => {
-          hSel.style.fontSize = hSizes[hSel.value] || '11px';
           const oldH=newEl.querySelector('h1,h2,h3,h4,h5,h6'); if(!oldH)return;
           const nh=iDoc.createElement(hSel.value); nh.innerHTML=oldH.innerHTML; nh.style.cssText=oldH.style.cssText; nh.dataset.paivitaEditable='text';
-          var refH=null; iDoc.querySelectorAll(hSel.value).forEach(function(el){if(!newEl.contains(el)&&!refH)refH=el;});
-          if(refH){nh.style.fontSize=iDoc.defaultView.getComputedStyle(refH).fontSize;nh.style.fontWeight=iDoc.defaultView.getComputedStyle(refH).fontWeight;}
-          else{var fsMap={'h1':'2.2rem','h2':'1.8rem','h3':'1.4rem','h4':'1.1rem'};nh.style.fontSize=fsMap[hSel.value]||'1.2rem';}
           oldH.replaceWith(nh);
           notifyBlockUpdate(newEl);
         });
+        // Font size selector from page elements
+        const fsSel = iDoc.createElement('select');
+        fsSel.title = 'Fontin koko';
+        fsSel.style.cssText = 'font-size:11px;padding:2px 4px;border:1px solid #e2e8f0;border-radius:4px;background:#fff;height:24px;color:#374151;cursor:pointer;min-width:52px;';
+        var fsSet = new Set();
+        iDoc.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,span,button,a').forEach(function(el) {
+          if (newEl.contains(el)) return;
+          var fspx = Math.round(parseFloat(iDoc.defaultView.getComputedStyle(el).fontSize));
+          if (fspx >= 10 && fspx <= 120) fsSet.add(fspx);
+        });
+        var fsList = Array.from(fsSet).sort(function(a,b){return b-a;});
+        var curFsPx = curH ? Math.round(parseFloat(iDoc.defaultView.getComputedStyle(curH).fontSize)) : 0;
+        fsList.forEach(function(px) {
+          var fo = iDoc.createElement('option'); fo.value = px + 'px'; fo.textContent = px + 'px';
+          if (px === curFsPx) fo.selected = true;
+          fsSel.appendChild(fo);
+        });
+        fsSel.addEventListener('change', function() {
+          var h = newEl.querySelector('h1,h2,h3,h4,h5,h6'); if (!h) return;
+          h.style.fontSize = fsSel.value; notifyBlockUpdate(newEl);
+        }););
         // Text color
         const tci = iDoc.createElement('input'); tci.type='color'; tci.value='#1a1a2e';
         tci.title='Tekstin v\u00e4ri'; tci.style.cssText='width:24px;height:24px;border:1px solid #e2e8f0;border-radius:4px;padding:1px;cursor:pointer;';
@@ -1829,7 +1844,7 @@ function selectBlock(blockId) {
         const delB=iDoc.createElement('button'); delB.textContent='\u00d7'; delB.title='Poista lohko';
         delB.style.cssText='min-width:24px;height:24px;border:1px solid #fca5a5;border-radius:4px;background:#fee2e2;color:#b91c1c;font-size:12px;cursor:pointer;padding:0 4px;font-weight:700;';
         delB.addEventListener('click', ev => { ev.stopPropagation(); window.parent.postMessage({source:'paivita-editor',type:'block-delete',insertId:newEl.dataset.paivitaInsertId},'*'); });
-        tb.appendChild(hSel); tb.appendChild(tci); tb.appendChild(bgWrap); tb.appendChild(delB);
+        tb.appendChild(hSel); tb.appendChild(fsSel); tb.appendChild(tci); tb.appendChild(bgWrap); tb.appendChild(delB);
         newEl.insertBefore(tb, newEl.firstChild);
         newEl.addEventListener('mouseenter', () => { tb.style.opacity='1'; tb.style.pointerEvents='all'; });
         newEl.addEventListener('mouseleave', ev => { if(!ev.relatedTarget||!newEl.contains(ev.relatedTarget)){tb.style.opacity='0';tb.style.pointerEvents='none';bgPop.style.display='none';} });
