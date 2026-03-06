@@ -1361,8 +1361,17 @@ window.addEventListener('message', e => {
     return;
   }
   if (e.data.type === 'block-delete') {
-    pendingChanges = pendingChanges.filter(x => !(x.type==='block-insert' && x.insertId===e.data.insertId));
-    try { const id2=document.getElementById('site-iframe').contentDocument; const el2=id2.querySelector(`[data-paivita-insert-id="${e.data.insertId}"]`); if(el2)el2.remove(); } catch(_){}
+    const _bd = document.getElementById('site-iframe').contentDocument;
+    if (e.data.insertId) {
+      pendingChanges = pendingChanges.filter(x => !(x.type==='block-insert' && x.insertId===e.data.insertId));
+      try { const el2=_bd.querySelector(`[data-paivita-insert-id="${e.data.insertId}"]`); if(el2)el2.remove(); } catch(_){}
+    } else {
+      try {
+        const secs2=Array.from(_bd.querySelectorAll('section'));
+        const el2=secs2[e.data.sectionIdx];
+        if(el2){ const id=++changeIdCounter; pendingChanges.push({id,type:'section-delete',label:'Lohko poistettu',sectionIdx:e.data.sectionIdx,sectionHint:e.data.sectionHint||'',tagName:'section',oldValue:'',newValue:''}); el2.remove(); }
+      } catch(_){}
+    }
     renderChangesList();
     return;
   }
@@ -1450,7 +1459,8 @@ function showElementEditor(data) {
       <div class="ctrl-group">
         <label>Muokkaa tekstiä</label>
         <textarea id="new-text" rows="4" style="resize:vertical;min-height:80px;"></textarea>
-      </div>`;
+      </div>
+      <button class="delete-img-btn" onclick="deleteSelectedElement()" style="margin-top:8px;">✕ Poista elementti sivulta</button>`;
 
     const newTextEl = document.getElementById('new-text');
     newTextEl.value = data.text;
@@ -1547,14 +1557,14 @@ function renderChangesList() {
   if (changesList2) changesList2.style.display = count > 0 ? '' : 'none';
   updateSubmitState();
 
-  const icon = c => c.type === 'image-delete' ? '🗑️' : c.type === 'image' ? '🖼️' : '✏️';
+  const icon = c => (c.type==='image-delete'||c.type==='element-delete'||c.type==='section-delete') ? '🗑️' : c.type==='image' ? '🖼️' : c.type==='block-insert' ? '➕' : '✏️';
   document.getElementById('changes-list').innerHTML = pendingChanges.map(c => `
     <div class="change-item">
       <div class="change-item-icon">${icon(c)}</div>
       <div class="change-item-text">
         <strong>${c.label}</strong>
-        ${c.type === 'image' || c.type === 'image-delete'
-          ? `<span style="color:#6b7280;font-size:0.72rem;">${c.type === 'image-delete' ? 'Poistettu' : 'Uusi URL lisätty'}</span>`
+        ${(c.type==='image'||c.type==='image-delete'||c.type==='element-delete'||c.type==='section-delete'||c.type==='block-insert')
+          ? `<span style="color:#6b7280;font-size:0.72rem;">${(c.type==='image-delete'||c.type==='element-delete'||c.type==='section-delete') ? 'Poistettu' : c.type==='block-insert' ? 'Lisätty' : 'Uusi URL'}</span>`
           : `<span style="color:#6b7280;font-size:0.72rem;">→ "${c.newValue.length > 35 ? c.newValue.substring(0,35)+'…' : c.newValue}"</span>`}
       </div>
       <button class="change-item-del" onclick="removeChange(${c.id})" title="Poista muutos">✕</button>
@@ -1593,6 +1603,8 @@ function undoLastChange() {
       const el  = doc.querySelector(last.selector);
       if (el) { el.src = last.oldValue; el.style.display = ''; }
     } catch (_) {}
+  } else if (last.type === 'element-delete' || last.type === 'section-delete') {
+    // Element removed from DOM — cannot restore, just remove tracking entry
   } else if (last.selector) {
     applyInIframe(last.selector, last.type, last.oldValue);
   }
@@ -1618,6 +1630,25 @@ function handleImageDelete(data) {
 function deleteSelectedImage() {
   if (!selectedEl || selectedEl.type !== 'image') return;
   handleImageDelete({ src: selectedEl.src, selector: selectedEl.selector });
+}
+
+function deleteSelectedElement() {
+  if (!selectedEl || selectedEl.type === 'image') return;
+  const doc = document.getElementById('site-iframe').contentDocument;
+  const el = doc.querySelector(selectedEl.selector);
+  if (!el) { clearSelection(); return; }
+  const section = el.closest('[data-paivita-insert-id]') || el.closest('section');
+  const inInserted = section && section.dataset.paivitaInsertId && pendingChanges.some(c => c.type==='block-insert' && c.insertId===section.dataset.paivitaInsertId);
+  el.remove();
+  if (inInserted) {
+    notifyBlockUpdate(section);
+  } else {
+    const short = (selectedEl.text||'').substring(0,40);
+    const id = ++changeIdCounter;
+    pendingChanges.push({id, type:'element-delete', label:(TYPE_LABELS[selectedEl.tagName]||selectedEl.tagName)+': "'+short+'"', selector:selectedEl.selector, tagName:selectedEl.tagName, oldValue:selectedEl.text||'', newValue:''});
+    renderChangesList();
+  }
+  clearSelection();
 }
 
 // ─── Uusi kuva sivulle ─────────────────────────────────────────
@@ -1843,7 +1874,7 @@ function selectBlock(blockId) {
         // Delete button
         const delB=iDoc.createElement('button'); delB.textContent='\u00d7'; delB.title='Poista lohko';
         delB.style.cssText='min-width:24px;height:24px;border:1px solid #fca5a5;border-radius:4px;background:#fee2e2;color:#b91c1c;font-size:12px;cursor:pointer;padding:0 4px;font-weight:700;';
-        delB.addEventListener('click', ev => { ev.stopPropagation(); window.parent.postMessage({source:'paivita-editor',type:'block-delete',insertId:newEl.dataset.paivitaInsertId},'*'); });
+        delB.addEventListener('click', ev => { ev.stopPropagation(); var _si=Array.from(iDoc.querySelectorAll('section')).indexOf(newEl); window.parent.postMessage({source:'paivita-editor',type:'block-delete',insertId:newEl.dataset.paivitaInsertId||'',sectionIdx:_si,sectionHint:newEl.outerHTML.substring(0,120)},'*'); });
         tb.appendChild(hSel); tb.appendChild(fsSel); tb.appendChild(tci); tb.appendChild(bgWrap); tb.appendChild(delB);
         newEl.insertBefore(tb, newEl.firstChild);
         newEl.addEventListener('mouseenter', () => { tb.style.opacity='1'; tb.style.pointerEvents='all'; });
@@ -1964,6 +1995,10 @@ async function submitChanges() {
     if (c.type === 'block-insert') return;  // handled separately
     if (c.type === 'image-delete') {
       lines.push(`${i+1}. POISTA KUVA: Poista img-elementti jonka src alkaa "${(c.oldValue||'').substring(0,80)}" kokonaan sivulta. Älä korvaa sitä millään.`);
+    } else if (c.type === 'element-delete') {
+      lines.push(`${i+1}. POISTA ELEMENTTI: Poista ${TYPE_LABELS[c.tagName]||c.tagName}-elementti jonka teksti on "${(c.oldValue||'').substring(0,60)}" kokonaan sivulta. Älä korvaa sitä millään.`);
+    } else if (c.type === 'section-delete') {
+      lines.push(`${i+1}. POISTA LOHKO: Poista ${c.sectionIdx+1}. section-elementti sivulta kokonaan (tunnisteena HTML-alku: "${(c.sectionHint||'').substring(0,80)}"). Älä korvaa sitä millään.`);
     } else if (c.type === 'image') {
       const role = `visual-img-${++imgIdx}`;
       imageChanges[role] = { old: c.oldValue || '', new: c.newValue };
