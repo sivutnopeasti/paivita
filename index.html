@@ -417,6 +417,29 @@
       font-size: 0.85rem; cursor: pointer; font-family: 'Montserrat', sans-serif; font-weight: 600;
     }
     .block-picker-cancel:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* â”€â”€ Sidebar tab-uudelleensuunnittelu â”€â”€ */
+    .sidebar { display: flex !important; flex-direction: column !important; overflow: hidden !important; }
+    .sidebar-head { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .sidebar-head-info { flex: 1; min-width: 0; }
+    .sidebar-tabs { display: flex; flex-shrink: 0; border-bottom: 2px solid var(--border); }
+    .stab { flex: 1; padding: 0.55rem 0.2rem; border: none; border-bottom: 3px solid transparent; margin-bottom: -2px; background: transparent; font-size: 0.68rem; font-weight: 700; color: var(--text-light); cursor: pointer; transition: all 0.15s; font-family: 'Montserrat',sans-serif; display: flex; align-items: center; justify-content: center; gap: 3px; }
+    .stab:hover { color: var(--primary); background: var(--bg-warm); }
+    .stab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .stab-badge { background: var(--primary); color: #fff; font-size: 0.58rem; padding: 1px 5px; border-radius: 10px; }
+    .tab-pane { display: none; flex: 1; min-height: 0; flex-direction: column; }
+    .tab-pane.active { display: flex; }
+    .tab-scroll { flex: 1; overflow-y: auto; padding: 0.875rem 1rem; }
+    .tab-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem 1rem; color: var(--text-light); flex: 1; }
+    .tab-empty-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .tab-empty p { font-size: 0.85rem; line-height: 1.5; }
+    .tab-section { padding: 0.75rem 1rem; border-top: 1px solid var(--border); flex-shrink: 0; }
+    .tab-section-title { font-size: 0.78rem; font-weight: 700; color: var(--text); margin-bottom: 0.6rem; }
+    .submit-section { padding: 0.875rem 1rem; flex-shrink: 0; border-top: 1px solid var(--border); }
+    #tab-edit .elem-editor { flex: 1; overflow-y: auto; padding: 1rem; flex-direction: column; }
+    #tab-edit .click-hint { flex: 1; }
+    .changes-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+    .changes-inner { flex: 1; overflow-y: auto; padding: 0.5rem 0.75rem; }
   </style>
 </head>
 <body>
@@ -586,63 +609,74 @@
   <!-- Sidebar -->
   <div class="sidebar">
     <div class="sidebar-head">
-      <div class="sidebar-company" id="sidebar-company">–</div>
-      <a class="sidebar-link" id="sidebar-sitelink" href="#" target="_blank">Avaa sivusto uuteen välilehteen ↗</a>
+      <div class="sidebar-head-info">
+        <div class="sidebar-company" id="sidebar-company">&#8211;</div>
+        <a class="sidebar-link" id="sidebar-sitelink" href="#" target="_blank">Avaa sivusto &#8599;</a>
+      </div>
     </div>
 
-    <div class="sidebar-body" id="sidebar-body">
-      <!-- Idle -->
-      <div class="click-hint" id="click-hint">
-        <div class="click-hint-icon">👆</div>
-        <p>Klikkaa sivulta mitä tahansa tekstiä, otsikkoa tai kuvaa muokataksesi sitä</p>
-      </div>
+    <div class="sidebar-tabs" id="sidebar-tabs" style="display:none;">
+      <button class="stab active" id="stab-edit" onclick="showTab('edit')">&#9998; Muokkaa</button>
+      <button class="stab" id="stab-changes" onclick="showTab('changes')">
+        &#9776; Muutokset&nbsp;<span class="stab-badge" id="stab-badge" style="display:none;">0</span>
+      </button>
+      <button class="stab" id="stab-add" onclick="showTab('add')">&#43; Lis&#228;&#228;</button>
+    </div>
 
-      <!-- Element editor -->
+    <!-- TAB: Muokkaa -->
+    <div class="tab-pane active" id="tab-edit">
+      <div class="click-hint" id="click-hint">
+        <div class="click-hint-icon">&#128070;</div>
+        <p>Klikkaa teksti&#228;, otsikkoa tai kuvaa sivustolla muokataksesi sit&#228;.</p>
+      </div>
       <div class="elem-editor" id="elem-editor">
         <div class="elem-header">
           <span class="elem-type-badge" id="elem-type-badge">Elementti</span>
-          <button class="elem-clear-btn" onclick="clearSelection()" title="Sulje">✕</button>
+          <button class="elem-clear-btn" onclick="clearSelection()" title="Sulje">&#10005;</button>
         </div>
         <div id="elem-controls"></div>
-        <button class="apply-btn" id="apply-btn" onclick="applyChange()">Tallenna muutos ✓</button>
+        <button class="apply-btn" id="apply-btn" onclick="applyChange()">Tallenna muutos &#10003;</button>
+        <button class="undo-btn" id="undo-btn" onclick="undoLastChange()" disabled style="margin-top:0.5rem;width:100%;">&#9100; Kumoa viimeisin</button>
       </div>
     </div>
 
-    <!-- Changes list -->
-    <div class="changes-section" id="changes-section" style="display:none">
-      <div class="changes-title">
-        Odottavat muutokset
-        <span class="changes-count" id="changes-count">0</span>
-        <button class="undo-btn" id="undo-btn" onclick="undoLastChange()" title="Kumoa viimeisin (Ctrl+Z)" disabled>↩ Kumoa</button>
+    <!-- TAB: Muutokset -->
+    <div class="tab-pane" id="tab-changes">
+      <div class="changes-wrap">
+        <div id="changes-empty-hint" class="tab-empty">
+          <div class="tab-empty-icon">&#128203;</div>
+          <p>Ei odottavia muutoksia.<br>Klikkaa elementti&#228; sivustolla.</p>
+        </div>
+        <div class="changes-inner" id="changes-list" style="display:none;"></div>
       </div>
-      <div id="changes-list"></div>
+      <div class="submit-section">
+        <button class="submit-btn" id="submit-btn" disabled onclick="submitChanges()">
+          L&#228;het&#228; muutokset sivustolle
+        </button>
+        <div class="status" id="submit-status"></div>
+      </div>
     </div>
 
-    <!-- Uusi kuva sivulle -->
-    <div class="add-image-section" id="add-image-section" style="display:none">
-      <div class="cert-section-title">🖼️ Lisää uusi kuva sivulle</div>
-      <div id="new-images-list"></div>
-      <button class="cert-add-btn" onclick="addNewSiteImage()">＋ Lisää kuva</button>
-      <input type="file" id="new-site-img-file" accept="image/*" style="display:none">
-    </div>
-
-    <!-- Sertifikaattien logot -->
-    <div class="cert-section" id="cert-section" style="display:none">
-      <div class="cert-section-title">🏅 Sertifikaattien logot</div>
-      <div class="cert-logos-row" id="cert-logos-row"></div>
-      <button class="cert-add-btn" onclick="addCertLogo()">＋ Lisää sertifikaatin logo</button>
-      <input type="file" id="cert-logo-file" accept="image/*" style="display:none">
-    </div>
-
-    <!-- Footer -->
-    <div class="sidebar-footer">
-      <button class="submit-btn" id="submit-btn" disabled onclick="submitChanges()">
-        Lähetä muutokset sivustolle
-      </button>
-      <div class="status" id="submit-status"></div>
+    <!-- TAB: Lisaa -->
+    <div class="tab-pane" id="tab-add">
+      <div class="tab-section" id="add-image-section" style="display:none;">
+        <div class="tab-section-title">&#128444;&#65039; Lis&#228;&#228; kuva sivulle</div>
+        <div id="new-images-list"></div>
+        <button class="cert-add-btn" onclick="addNewSiteImage()">&#65291; Lis&#228;&#228; kuva</button>
+        <input type="file" id="new-site-img-file" accept="image/*" style="display:none;">
+      </div>
+      <div class="tab-section" id="cert-section" style="display:none;">
+        <div class="tab-section-title">&#127877; Sertifikaattien logot</div>
+        <div class="cert-logos-row" id="cert-logos-row"></div>
+        <button class="cert-add-btn" onclick="addCertLogo()">&#65291; Lis&#228;&#228; sertifikaatin logo</button>
+        <input type="file" id="cert-logo-file" accept="image/*" style="display:none;">
+      </div>
+      <div class="tab-empty" id="add-tab-hint">
+        <div class="tab-empty-icon">&#10133;</div>
+        <p>Lis&#228;&#228; sivustolle uusia kuvia tai sertifikaattien logoja.</p>
+      </div>
     </div>
   </div>
-
   <!-- Preview -->
   <div class="preview-wrap">
     <div class="preview-loading" id="preview-loading">Ladataan sivustoa...</div>
@@ -938,12 +972,44 @@ function logout() {
   document.getElementById('editor-wrap').style.display = 'none';
   document.getElementById('id-overlay').style.display  = 'flex';
   document.getElementById('topbar-user').style.display = 'none';
+  document.getElementById('sidebar-tabs').style.display = 'none';
 
   showMode('login');
 
   document.getElementById('login-email').value    = '';
   document.getElementById('login-password').value = '';
 }
+
+// â”€â”€â”€ Tab-navigaatio â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+function showTab(tab) {
+  ['edit', 'changes', 'add'].forEach(t => {
+    const pane = document.getElementById('tab-' + t);
+    const btn  = document.getElementById('stab-' + t);
+    if (pane) pane.classList.toggle('active', t === tab);
+    if (btn)  btn.classList.toggle('active', t === tab);
+  });
+}
+
+// â”€â”€â”€ Block helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+function getSiteColors(iDoc) {
+  try {
+    const cs = iDoc.defaultView.getComputedStyle(iDoc.documentElement);
+    const g = v => cs.getPropertyValue(v).trim();
+    return { primary: g('--primary')||'#1e5bb5', dark: g('--primary-dark')||'#0d3a7a', accent: g('--accent')||'#00c6ff', bg: g('--bg')||'#fff', warm: g('--bg-warm')||'#f0f4f8', text: g('--text')||'#1a1a2e' };
+  } catch(_) { return { primary:'#1e5bb5', dark:'#0d3a7a', accent:'#00c6ff', bg:'#fff', warm:'#f0f4f8', text:'#1a1a2e' }; }
+}
+
+function notifyBlockUpdate(sectionEl) {
+  const tb = sectionEl.querySelector('[data-paivita-block-toolbar]');
+  let html;
+  if (tb) { const d=tb.style.cssText; tb.style.display='none'; html=sectionEl.outerHTML; tb.style.cssText=d; }
+  else { html = sectionEl.outerHTML; }
+  const c = pendingChanges.find(x => x.type==='block-insert' && x.insertId===sectionEl.dataset.paivitaInsertId);
+  if (c) c.blockHtml = html;
+}
+
 
 // ─── Apufunktiot ────────────────────────────────────────────────
 
@@ -1022,6 +1088,8 @@ async function loadSite(siteId, statusEl = null) {
     document.getElementById('id-overlay').style.display  = 'none';
     document.getElementById('editor-wrap').style.display = 'flex';
     document.getElementById('topbar-user').style.display = '';
+    document.getElementById('sidebar-tabs').style.display = '';
+    showTab('edit');
 
     const siteUrl = `https://${GH_ORG}.github.io/${repoName}/`;
     document.getElementById('sidebar-company').textContent = currentConfig.company;
@@ -1276,6 +1344,17 @@ window.addEventListener('message', e => {
     openBlockPicker(e.data.afterIndex);
     return;
   }
+  if (e.data.type === 'block-html-update') {
+    const bc = pendingChanges.find(x => x.type==='block-insert' && x.insertId===e.data.insertId);
+    if (bc) bc.blockHtml = e.data.html;
+    return;
+  }
+  if (e.data.type === 'block-delete') {
+    pendingChanges = pendingChanges.filter(x => !(x.type==='block-insert' && x.insertId===e.data.insertId));
+    try { const id2=document.getElementById('site-iframe').contentDocument; const el2=id2.querySelector(`[data-paivita-insert-id="${e.data.insertId}"]`); if(el2)el2.remove(); } catch(_){}
+    renderChangesList();
+    return;
+  }
   if (hasUnsavedEdit) {
     const btn = document.getElementById('apply-btn');
     btn.classList.remove('shake');
@@ -1300,9 +1379,10 @@ const TYPE_LABELS = {
 
 function showElementEditor(data) {
   selectedEl = data;
+  showTab('edit');
 
   document.getElementById('click-hint').style.display  = 'none';
-  document.getElementById('elem-editor').style.display = 'block';
+  document.getElementById('elem-editor').style.display = 'flex';
 
   const badge    = document.getElementById('elem-type-badge');
   const controls = document.getElementById('elem-controls');
@@ -1445,8 +1525,12 @@ function updateSubmitState() {
 
 function renderChangesList() {
   const count = pendingChanges.length;
-  document.getElementById('changes-count').textContent     = count;
-  document.getElementById('changes-section').style.display = count > 0 ? 'block' : 'none';
+  const badge = document.getElementById('stab-badge');
+  if (badge) { badge.textContent = count; badge.style.display = count > 0 ? '' : 'none'; }
+  const changesEmpty = document.getElementById('changes-empty-hint');
+  const changesList2 = document.getElementById('changes-list');
+  if (changesEmpty) changesEmpty.style.display = count > 0 ? 'none' : '';
+  if (changesList2) changesList2.style.display = count > 0 ? '' : 'none';
   updateSubmitState();
 
   const icon = c => c.type === 'image-delete' ? '🗑️' : c.type === 'image' ? '🖼️' : '✏️';
@@ -1664,7 +1748,44 @@ function selectBlock(blockId) {
           if (!el.dataset.paivitaEditable && el.childElementCount === 0 && el.textContent.trim().length > 0)
             el.dataset.paivitaEditable = 'text';
         });
-        newEl.querySelectorAll('img').forEach(el => { el.dataset.paivitaEditable = 'image'; });
+        // Block toolbar
+        newEl.style.position = 'relative';
+        const sc = getSiteColors(iDoc);
+        const tb = iDoc.createElement('div');
+        tb.setAttribute('data-paivita-block-toolbar','true');
+        tb.style.cssText='position:absolute;top:0;right:0;z-index:99999;display:flex;gap:3px;align-items:center;background:rgba(255,255,255,0.97);border:1px solid rgba(30,91,181,0.2);border-radius:0 0 0 8px;padding:4px 6px;opacity:0;transition:opacity 0.15s;pointer-events:none;box-shadow:-2px 2px 8px rgba(0,0,0,0.08);';
+        // Heading select
+        const hSel = iDoc.createElement('select');
+        hSel.title='Otsikon koko'; hSel.style.cssText='font-size:11px;padding:2px 4px;border:1px solid #e2e8f0;border-radius:4px;background:#fff;height:24px;font-weight:700;color:#1e5bb5;cursor:pointer;';
+        const curH = newEl.querySelector('h1,h2,h3,h4,h5,h6');
+        ['h1','h2','h3','h4'].forEach(h => { const o=iDoc.createElement('option'); o.value=h; o.textContent=h.toUpperCase(); if(curH&&curH.tagName.toLowerCase()===h)o.selected=true; hSel.appendChild(o); });
+        hSel.addEventListener('change', () => {
+          const oldH=newEl.querySelector('h1,h2,h3,h4,h5,h6'); if(!oldH)return;
+          const nh=iDoc.createElement(hSel.value); nh.innerHTML=oldH.innerHTML; nh.style.cssText=oldH.style.cssText; nh.dataset.paivitaEditable='text'; oldH.replaceWith(nh);
+          notifyBlockUpdate(newEl);
+        });
+        // Text color
+        const tci = iDoc.createElement('input'); tci.type='color'; tci.value='#1a1a2e';
+        tci.title='Tekstin väri'; tci.style.cssText='width:24px;height:24px;border:1px solid #e2e8f0;border-radius:4px;padding:1px;cursor:pointer;';
+        tci.addEventListener('input', () => { newEl.querySelectorAll('h1,h2,h3,h4,h5,h6,p,a,span,button').forEach(el => { if(!tb.contains(el)) el.style.color=tci.value; }); notifyBlockUpdate(newEl); });
+        // BG color
+        const bgWrap=iDoc.createElement('div'); bgWrap.style.cssText='position:relative;display:inline-flex;';
+        const bgBtn=iDoc.createElement('button'); bgBtn.textContent='BG'; bgBtn.title='TaustavÃ¤ri';
+        bgBtn.style.cssText='min-width:24px;height:24px;border:1px solid #e2e8f0;border-radius:4px;background:#f0f4f8;cursor:pointer;font-size:10px;font-weight:700;color:#1e5bb5;padding:0 4px;';
+        const bgPop=iDoc.createElement('div'); bgPop.style.cssText='display:none;position:absolute;top:28px;right:0;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:6px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:100001;flex-wrap:wrap;gap:4px;width:116px;';
+        [['#fff','Valkoinen'],['#f8fafc','Vaalea'],['#f0f4f8','Lämmin'],[sc.primary,'Primary'],[sc.dark,'Tumma'],[sc.accent,'Aksentti'],['#1a1a2e','Musta']].forEach(([col,lbl]) => {
+          const sw=iDoc.createElement('button'); sw.title=lbl; sw.style.cssText=`width:20px;height:20px;background:;border:2px solid #e2e8f0;border-radius:4px;cursor:pointer;`;
+          sw.addEventListener('click', ev => { ev.stopPropagation(); newEl.style.background=col; bgPop.style.display='none'; notifyBlockUpdate(newEl); }); bgPop.appendChild(sw); });
+        bgBtn.addEventListener('click', ev => { ev.stopPropagation(); bgPop.style.display=bgPop.style.display==='none'||!bgPop.style.display?'flex':'none'; });
+        bgWrap.appendChild(bgBtn); bgWrap.appendChild(bgPop);
+        // Delete button
+        const delB=iDoc.createElement('button'); delB.textContent='âœ•'; delB.title='Poista lohko';
+        delB.style.cssText='min-width:24px;height:24px;border:1px solid #fca5a5;border-radius:4px;background:#fee2e2;color:#b91c1c;font-size:12px;cursor:pointer;padding:0 4px;font-weight:700;';
+        delB.addEventListener('click', ev => { ev.stopPropagation(); window.parent.postMessage({source:'paivita-editor',type:'block-delete',insertId:newEl.dataset.paivitaInsertId},'*'); });
+        tb.appendChild(hSel); tb.appendChild(tci); tb.appendChild(bgWrap); tb.appendChild(delB);
+        newEl.insertBefore(tb, newEl.firstChild);
+        newEl.addEventListener('mouseenter', () => { tb.style.opacity='1'; tb.style.pointerEvents='all'; });
+        newEl.addEventListener('mouseleave', ev => { if(!ev.relatedTarget||!newEl.contains(ev.relatedTarget)){tb.style.opacity='0';tb.style.pointerEvents='none';bgPop.style.display='none';} });
       }
     }
   } catch (_) {}
