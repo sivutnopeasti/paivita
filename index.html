@@ -1833,7 +1833,7 @@ function selectBlock(blockId) {
   });
   renderChangesList();
   // Rebuild insert zones to include new block
-  try { if (iDoc && iDoc.defaultView && iDoc.defaultView.paivitaRebuildZones) iDoc.defaultView.paivitaRebuildZones(); } catch(_){}
+  try { const _d = document.getElementById('site-iframe').contentDocument; if (_d && _d.defaultView && _d.defaultView.paivitaRebuildZones) _d.defaultView.paivitaRebuildZones(); } catch(_){}
 }
 
 
