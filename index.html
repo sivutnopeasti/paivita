@@ -161,6 +161,17 @@
     .preview-img-wrap img { width: 100%; max-height: 130px; object-fit: cover; display: block; }
     .or-divider { text-align: center; font-size: 0.75rem; color: var(--text-light); margin: 0.4rem 0; }
 
+    .fit-toggle { display: flex; gap: 6px; margin-top: 0.5rem; }
+    .fit-btn {
+      flex: 1; padding: 0.45rem 0.5rem; border: 1.5px solid var(--border);
+      border-radius: 7px; background: var(--bg); color: var(--text-light);
+      font-size: 0.78rem; font-weight: 600; cursor: pointer;
+      font-family: 'Montserrat', sans-serif; transition: all 0.15s;
+    }
+    .fit-btn.fit-active {
+      border-color: var(--primary); background: #e8f0fc; color: var(--primary);
+    }
+
     .upload-btn {
       width: 100%; padding: 0.55rem; border: 1.5px dashed rgba(30,91,181,0.35);
       border-radius: 8px; background: var(--bg); color: var(--primary);
@@ -745,6 +756,8 @@ let certNameCb      = null;
 let selectedEl      = null;
 let changeIdCounter = 0;
 let hasUnsavedEdit  = false;
+let currentImageUrl = '';
+let currentFitMode  = 'cover';
 let currentInsertAfterIndex = null;  // pending block insert position
 
 // ─── Auth-näkymän vaihto ───────────────────────────────────────
@@ -1450,13 +1463,15 @@ function showElementEditor(data) {
       <div class="ctrl-group">
         <label>Vaihda kuvaksi</label>
         <button class="upload-btn" id="img-upload-trigger">↑ Lataa tiedosto</button>
-        <div class="or-divider">tai</div>
-        <input type="text" id="new-img-url" placeholder="Liitä kuva-URL...">
       </div>
-      <p style="font-size:0.78rem;color:#6b7280;margin-top:0.25rem;line-height:1.5;">
-        💡 Jos kuva näyttää väärin rajatulta, ei hätää — lähetyksen yhteydessä kuvasuhde korjataan automaattisesti.
-      </p>
-      <button class="delete-img-btn" onclick="deleteSelectedImage()">✕ Poista kuva sivulta kokonaan</button>`;
+      <div class="fit-toggle">
+        <button id="fit-btn-cover" class="fit-btn fit-active" onclick="setFitMode('cover')">✂ Leikkaa kehykseen</button>
+        <button id="fit-btn-contain" class="fit-btn" onclick="setFitMode('contain')">⬜ Sovita kehys kuvaan</button>
+      </div>
+      <button class="delete-img-btn" onclick="deleteSelectedImage()" style="margin-top:0.75rem;">✕ Poista kuva sivulta kokonaan</button>`;
+
+    currentImageUrl = '';
+    currentFitMode  = 'cover';
 
     document.getElementById('img-upload-trigger').onclick = () => {
       const fi = document.getElementById('img-file-hidden');
@@ -1466,23 +1481,16 @@ function showElementEditor(data) {
         try {
           showOverlay('Ladataan kuvaa...');
           const { url, thumbUrl } = await uploadToImgBB(fi.files[0]);
-          document.getElementById('new-img-url').value = url;
+          currentImageUrl = url;
           controls.querySelector('.preview-img-wrap img').src = thumbUrl;
           applyInIframe(selectedEl.selector, 'image', url);
+          applyFitInIframe(selectedEl.selector, currentFitMode);
         } catch (e) {
           alert('Lataus epäonnistui: ' + e.message);
         } finally { hideOverlay(); }
       };
       fi.click();
     };
-
-    document.getElementById('new-img-url').addEventListener('input', e => {
-      const url = e.target.value.trim();
-      if (url) {
-        controls.querySelector('.preview-img-wrap img').src = url;
-        applyInIframe(selectedEl.selector, 'image', url);
-      }
-    });
 
   } else {
     controls.innerHTML = `
@@ -1528,8 +1536,8 @@ function applyChange() {
   let oldValue, newValue, type, label;
 
   if (selectedEl.type === 'image') {
-    newValue = document.getElementById('new-img-url').value.trim();
-    if (!newValue) { alert('Lisää kuva tai URL ensin.'); return; }
+    newValue = currentImageUrl;
+    if (!newValue) { alert('Lisää kuva ensin.'); return; }
     oldValue = selectedEl.src;
     type     = 'image';
     label    = 'Kuva vaihdettu';
@@ -1548,7 +1556,8 @@ function applyChange() {
   applyInIframe(selectedEl.selector, selectedEl.type, newValue);
 
   const id = ++changeIdCounter;
-  pendingChanges.push({ id, type, label, oldValue, newValue, tagName: selectedEl.tagName, selector: selectedEl.selector });
+  const extra = (type === 'image') ? { fit: currentFitMode } : {};
+  pendingChanges.push({ id, type, label, oldValue, newValue, tagName: selectedEl.tagName, selector: selectedEl.selector, ...extra });
   renderChangesList();
   clearSelection();
 }
@@ -1569,6 +1578,31 @@ function applyInIframe(selector, type, value) {
       if (el.dataset.target !== undefined) el.dataset.target = value;
     }
   } catch (_) {}
+}
+
+function applyFitInIframe(selector, fitMode) {
+  try {
+    const doc = document.getElementById('site-iframe').contentDocument;
+    const el  = doc.querySelector(selector);
+    if (!el) return;
+    el.style.objectFit = fitMode;
+    if (fitMode === 'contain') {
+      el.style.height    = 'auto';
+      el.style.maxWidth  = '100%';
+    } else {
+      el.style.height    = '';
+      el.style.maxWidth  = '';
+    }
+  } catch (_) {}
+}
+
+function setFitMode(mode) {
+  currentFitMode = mode;
+  const btnCover   = document.getElementById('fit-btn-cover');
+  const btnContain = document.getElementById('fit-btn-contain');
+  if (btnCover)   btnCover.classList.toggle('fit-active',   mode === 'cover');
+  if (btnContain) btnContain.classList.toggle('fit-active', mode === 'contain');
+  if (selectedEl && currentImageUrl) applyFitInIframe(selectedEl.selector, mode);
 }
 
 // ─── Muutoslista ───────────────────────────────────────────────
@@ -2081,7 +2115,7 @@ async function submitChanges() {
       structuredChanges.push({ type: 'block-insert', after_section_idx: c.afterIndex, label: c.blockLabel, html: c.blockHtml });
     } else if (c.type === 'image') {
       const role = `visual-img-${++imgIdx}`;
-      imageChanges[role] = { old: c.oldValue || '', new: c.newValue };
+      imageChanges[role] = { old: c.oldValue || '', new: c.newValue, objectFit: c.fit || 'cover' };
     } else {
       const key = `${c.tagName}_${++txtIdx}`;
       textChanges[key] = { old: c.oldValue, new: c.newValue };
