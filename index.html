@@ -1810,7 +1810,7 @@ function selectBlock(blockId) {
         fsSel.addEventListener('change', function() {
           var h = newEl.querySelector('h1,h2,h3,h4,h5,h6'); if (!h) return;
           h.style.fontSize = fsSel.value; notifyBlockUpdate(newEl);
-        }););
+        });
         // Text color
         const tci = iDoc.createElement('input'); tci.type='color'; tci.value='#1a1a2e';
         tci.title='Tekstin v\u00e4ri'; tci.style.cssText='width:24px;height:24px;border:1px solid #e2e8f0;border-radius:4px;padding:1px;cursor:pointer;';
