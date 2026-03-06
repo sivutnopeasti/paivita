@@ -1177,7 +1177,7 @@ function injectEditorScript(doc) {
   // Merkitse myös kaikki leaf-divit (stat-number, stat-label ym. joilla ei ole lapsi-elementtejä)
   const skipTags = new Set(['script','style','noscript','svg','path','use','symbol','defs','meta','link','br','hr','input','textarea','select','option']);
   doc.querySelectorAll('*').forEach(el => {
-    if (!el.dataset.paivitaEditable && el.childElementCount === 0 && el.textContent.trim().length > 0 && !skipTags.has(el.tagName.toLowerCase())) {
+    if (!el.dataset.paivitaEditable && el.childElementCount === 0 && el.textContent.trim().length > 0 && !skipTags.has(el.tagName.toLowerCase()) && !el.hasAttribute('data-paivita-add-card')) {
       el.dataset.paivitaEditable = 'text';
     }
   });
@@ -1208,6 +1208,7 @@ function injectEditorScript(doc) {
   doc.addEventListener('click', e => {
     const el = e.target;
     if (el.id === 'paivita-del-btn') return;
+    if (el.closest('[data-paivita-add-card]')) return;
 
     // Estä linkkinavigaatio aina
     if (el.closest('a[href]')) e.preventDefault();
