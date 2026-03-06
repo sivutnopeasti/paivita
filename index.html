@@ -2065,51 +2065,38 @@ async function submitChanges() {
 
   const imageChanges = {};
   const textChanges  = {};
-  const nonBlockChanges = pendingChanges.filter(c => c.type !== 'block-insert');
-  const lines        = nonBlockChanges.length > 0 ? ['Visuaaliset muutokset (tee täsmälleen nämä muutokset):\n'] : [];
+  const structuredChanges = [];
 
   let imgIdx = 0;
   let txtIdx = 0;
 
-  pendingChanges.forEach((c, i) => {
-    if (c.type === 'block-insert') return;  // handled separately
+  pendingChanges.forEach((c) => {
     if (c.type === 'image-delete') {
-      lines.push(`${i+1}. POISTA KUVA: Poista img-elementti jonka src alkaa "${(c.oldValue||'').substring(0,80)}" kokonaan sivulta. Älä korvaa sitä millään.`);
+      structuredChanges.push({ type: 'image-delete', selector: c.selector, src: c.oldValue || '' });
     } else if (c.type === 'element-delete') {
-      lines.push(`${i+1}. POISTA ELEMENTTI: Poista ${TYPE_LABELS[c.tagName]||c.tagName}-elementti jonka teksti on "${(c.oldValue||'').substring(0,60)}" kokonaan sivulta. Älä korvaa sitä millään.`);
+      structuredChanges.push({ type: 'element-delete', selector: c.selector });
     } else if (c.type === 'section-delete') {
-      lines.push(`${i+1}. POISTA LOHKO: Poista ${c.sectionIdx+1}. section-elementti sivulta kokonaan (tunnisteena HTML-alku: "${(c.sectionHint||'').substring(0,80)}"). Älä korvaa sitä millään.`);
+      structuredChanges.push({ type: 'section-delete', section_idx: c.sectionIdx });
+    } else if (c.type === 'block-insert') {
+      structuredChanges.push({ type: 'block-insert', after_section_idx: c.afterIndex, label: c.blockLabel, html: c.blockHtml });
     } else if (c.type === 'image') {
       const role = `visual-img-${++imgIdx}`;
       imageChanges[role] = { old: c.oldValue || '', new: c.newValue };
-      lines.push(`${i+1}. KUVA: Vaihda kuva jonka src="${(c.oldValue||'').substring(0,80)}" → "${c.newValue}"`);
     } else {
       const key = `${c.tagName}_${++txtIdx}`;
       textChanges[key] = { old: c.oldValue, new: c.newValue };
-      lines.push(`${i+1}. TEKSTI (${c.tagName.toUpperCase()}): Vaihda "${c.oldValue}" → "${c.newValue}"`);
     }
   });
 
+  // freeText käytetään vain uusille kuville (tarvitsee Clauden sijoittelupäätöksen)
+  const freeTextLines = [];
   if (newSiteImages.length > 0) {
-    if (lines.length > 0) lines.push('');
-    lines.push('Lisättävät uudet kuvat sivulle:');
+    freeTextLines.push('Lisättävät uudet kuvat sivulle:');
     newSiteImages.forEach((img, i) => {
-      lines.push(`${i+1}. Lisää kuva URL="${img.url}"${img.desc ? `, sijoitus: "${img.desc}"` : ' sopivaan paikkaan sivulla'}`);
+      freeTextLines.push(`${i+1}. Lisää kuva URL="${img.url}"${img.desc ? `, sijoitus: "${img.desc}"` : ' sopivaan paikkaan sivulla'}`);
     });
   }
-
-  const blockInserts = pendingChanges.filter(c => c.type === 'block-insert');
-  if (blockInserts.length > 0) {
-    if (lines.length > 0) lines.push('');
-    lines.push('## Uudet HTML-lohkot (lisaa sivulle):');
-    blockInserts.forEach((b, j) => {
-      lines.push(`${j+1}. Lisaa "${b.blockLabel}" section #${b.afterIndex + 1} jalkeen:`);
-      lines.push('--- HTML ---');
-      lines.push(b.blockHtml);
-      lines.push('--- END ---');
-    });
-  }
-  const freeText = lines.join('\n');
+  const freeText = freeTextLines.join('\n');
 
   // Käytä sessioon rekisteröityä site_id:tä (ei site-config.json:n arvoa),
   // jotta worker-autorisointi onnistuu aina
@@ -2130,6 +2117,7 @@ async function submitChanges() {
         imageChanges,
         textChanges,
         freeText,
+        ...(structuredChanges.length > 0 && { structuredChanges }),
         ...(certLogos.length > 0 && { certLogos }),
       }),
     });
