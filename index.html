@@ -1654,6 +1654,17 @@ function selectBlock(blockId) {
       if (newEl) {
         newEl.dataset.paivitaInsertId = insertId;
         zone.after(newEl);
+        // Merkitse uuden lohkon elementit editoitaviksi
+        const edSel = 'h1,h2,h3,h4,h5,h6,p,span,strong,b,li,a,button,label';
+        newEl.querySelectorAll(edSel).forEach(el => {
+          const hasText = [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim().length > 1);
+          if (hasText || el.childElementCount === 0) el.dataset.paivitaEditable = 'text';
+        });
+        newEl.querySelectorAll('div').forEach(el => {
+          if (!el.dataset.paivitaEditable && el.childElementCount === 0 && el.textContent.trim().length > 0)
+            el.dataset.paivitaEditable = 'text';
+        });
+        newEl.querySelectorAll('img').forEach(el => { el.dataset.paivitaEditable = 'image'; });
       }
     }
   } catch (_) {}
