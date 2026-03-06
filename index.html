@@ -705,7 +705,10 @@ const BLOCK_TEMPLATES = [
     id: 'cards',
     icon: '&#127183;',
     label: 'Korttirivistö',
-    html: '<section style="padding:4rem 0;background:#f8fafc;"><div style="max-width:1100px;margin:0 auto;padding:0 1.5rem;"><h2 style="font-size:1.8rem;text-align:center;margin-bottom:2.5rem;">Palvelut</h2><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.5rem;"><div style="background:#fff;border-radius:12px;padding:1.75rem;box-shadow:0 2px 12px rgba(0,0,0,0.06);"><div style="font-size:2rem;margin-bottom:0.75rem;">&#10003;</div><h3 style="font-size:1.05rem;margin-bottom:0.5rem;">Palvelu 1</h3><p style="color:#4a5568;font-size:0.9rem;line-height:1.6;">Kuvaus tähän.</p></div><div style="background:#fff;border-radius:12px;padding:1.75rem;box-shadow:0 2px 12px rgba(0,0,0,0.06);"><div style="font-size:2rem;margin-bottom:0.75rem;">&#10003;</div><h3 style="font-size:1.05rem;margin-bottom:0.5rem;">Palvelu 2</h3><p style="color:#4a5568;font-size:0.9rem;line-height:1.6;">Kuvaus tähän.</p></div><div style="background:#fff;border-radius:12px;padding:1.75rem;box-shadow:0 2px 12px rgba(0,0,0,0.06);"><div style="font-size:2rem;margin-bottom:0.75rem;">&#10003;</div><h3 style="font-size:1.05rem;margin-bottom:0.5rem;">Palvelu 3</h3><p style="color:#4a5568;font-size:0.9rem;line-height:1.6;">Kuvaus tähän.</p></div></div></div></section>',
+    html: '<section style="padding:4rem 0;background:#f8fafc;"><div style="max-width:1100px;margin:0 auto;padding:0 1.5rem;"><h2 style="font-size:1.8rem;text-align:center;margin-bottom:2.5rem;">Palvelut</h2><div data-paivita-card-grid style="display:flex;flex-wrap:wrap;gap:1.5rem;align-items:flex-start;"><div style="background:#fff;border-radius:12px;padding:1.75rem;box-shadow:0 2px 12px rgba(0,0,0,0.06);flex:0 0 calc(33.333% - 1rem);min-width:220px;max-width:360px;"><img src="https://placehold.co/300x200/e2e8f0/94a3b8?text=Kuva" alt="" style="width:100%;border-radius:8px;margin-bottom:0.75rem;display:block;"><h3 style="font-size:1.05rem;margin-bottom:0.5rem;">Palvelu 1</h3><p style="color:#4a5568;font-size:0.9rem;line-height:1.6;">Kuvaus t&#228;h&#228;n.</p></div></div><button data-paivita-add-card style="margin-top:1.25rem;padding:0.6rem 1.4rem;background:#fff;border:2px dashed #cbd5e0;border-radius:8px;color:#64748b;font-size:0.9rem;cursor:pointer;display:block;font-weight:600;">+ Lis&#228;&#228; kortti</button></div></section>',
+  },
+  {
+    id: 'image-text'
   },
   {
     id: 'image-text',
@@ -1002,10 +1005,14 @@ function getSiteColors(iDoc) {
 }
 
 function notifyBlockUpdate(sectionEl) {
-  const tb = sectionEl.querySelector('[data-paivita-block-toolbar]');
-  let html;
-  if (tb) { const d=tb.style.cssText; tb.style.display='none'; html=sectionEl.outerHTML; tb.style.cssText=d; }
-  else { html = sectionEl.outerHTML; }
+  const tb     = sectionEl.querySelector('[data-paivita-block-toolbar]');
+  const addBtn = sectionEl.querySelector('[data-paivita-add-card]');
+  let tbCss, addDisp;
+  if (tb)     { tbCss = tb.style.cssText;       tb.style.display  = 'none'; }
+  if (addBtn) { addDisp = addBtn.style.display; addBtn.style.display = 'none'; }
+  const html = sectionEl.outerHTML;
+  if (tb)     tb.style.cssText     = tbCss;
+  if (addBtn) addBtn.style.display = addDisp;
   const c = pendingChanges.find(x => x.type==='block-insert' && x.insertId===sectionEl.dataset.paivitaInsertId);
   if (c) c.blockHtml = html;
 }
@@ -1822,6 +1829,30 @@ function selectBlock(blockId) {
         newEl.insertBefore(tb, newEl.firstChild);
         newEl.addEventListener('mouseenter', () => { tb.style.opacity='1'; tb.style.pointerEvents='all'; });
         newEl.addEventListener('mouseleave', ev => { if(!ev.relatedTarget||!newEl.contains(ev.relatedTarget)){tb.style.opacity='0';tb.style.pointerEvents='none';bgPop.style.display='none';} });
+      }
+      // Add-card button for cards block
+      const addCardBtn = newEl.querySelector('[data-paivita-add-card]');
+      if (addCardBtn) {
+        addCardBtn.addEventListener('click', function(ev) {
+          ev.stopPropagation();
+          const grid = newEl.querySelector('[data-paivita-card-grid]');
+          if (!grid) return;
+          const n = grid.children.length + 1;
+          const card = iDoc.createElement('div');
+          card.style.cssText = 'background:#fff;border-radius:12px;padding:1.75rem;box-shadow:0 2px 12px rgba(0,0,0,0.06);flex:0 0 calc(33.333% - 1rem);min-width:220px;max-width:360px;';
+          card.innerHTML = '<img src="https://placehold.co/300x200/e2e8f0/94a3b8?text=Kuva" alt="" style="width:100%;border-radius:8px;margin-bottom:0.75rem;display:block;"><h3 style="font-size:1.05rem;margin-bottom:0.5rem;">Palvelu '+n+'</h3><p style="color:#4a5568;font-size:0.9rem;line-height:1.6;">Kuvaus t&#228;h&#228;n.</p>';
+          card.querySelectorAll('h3,p').forEach(function(el){ el.dataset.paivitaEditable='text'; });
+          card.querySelectorAll('img').forEach(function(el){ el.dataset.paivitaEditable='image'; });
+          try {
+            const bodyFont = iDoc.defaultView.getComputedStyle(iDoc.body).fontFamily;
+            const hEl = iDoc.querySelector('h1,h2,h3');
+            const headFont = hEl ? iDoc.defaultView.getComputedStyle(hEl).fontFamily : bodyFont;
+            card.querySelectorAll('h3').forEach(function(el){ el.style.fontFamily=headFont; });
+            card.querySelectorAll('p').forEach(function(el){ el.style.fontFamily=bodyFont; });
+          } catch(e){}
+          grid.appendChild(card);
+          notifyBlockUpdate(newEl);
+        });
       }
     }
   } catch (_) {}
