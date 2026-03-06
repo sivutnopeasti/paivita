@@ -1223,6 +1223,20 @@ function injectEditorScript(doc) {
     if (el.id === 'paivita-del-btn') return;
     if (el.closest('[data-paivita-add-card]')) return;
 
+    // Estä uuden elementin valinta jos kuvamuutos on tallentamatta
+    if (currentImageUrl) {
+      e.preventDefault();
+      e.stopPropagation();
+      const btn = document.getElementById('apply-btn');
+      if (btn) {
+        btn.classList.remove('shake');
+        void btn.offsetWidth; // reflow → restart animation
+        btn.classList.add('shake');
+        setTimeout(() => btn.classList.remove('shake'), 600);
+      }
+      return;
+    }
+
     // Estä linkkinavigaatio aina
     if (el.closest('a[href]')) e.preventDefault();
 
