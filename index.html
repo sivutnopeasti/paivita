@@ -447,7 +447,7 @@
 <!-- Lohkojen lisays -modal -->
 <div class="block-picker-overlay" id="blockPickerOverlay">
   <div class="block-picker">
-    <h3>Lisaa lohko</h3>
+    <h3>Lisää lohko</h3>
     <div class="block-picker-grid" id="blockPickerGrid"></div>
     <button class="block-picker-cancel" onclick="closeBlockPicker()">Peruuta</button>
   </div>
@@ -1274,7 +1274,8 @@ function injectEditorScript(doc) {
     }, '*');
   }, true);
   // Lisaa "+" zonet section-elementtien valiin
-  (function addInsertZones() {
+  doc.defaultView.paivitaRebuildZones = function() {
+    doc.querySelectorAll('[data-paivita-insert-zone]').forEach(function(z){z.remove();});
     const allSecs = [...doc.querySelectorAll('section')];
     const topSecs = allSecs.filter(s => {
       let p = s.parentElement;
@@ -1309,7 +1310,8 @@ function injectEditorScript(doc) {
       });
       sec.after(zone);
     });
-  })();}
+  };
+  doc.defaultView.paivitaRebuildZones();}
 
 function buildSelector(el, doc) {
   const path = [];
@@ -1831,6 +1833,8 @@ function selectBlock(blockId) {
     tagName: 'section',
   });
   renderChangesList();
+  // Rebuild insert zones to include new block
+  try { if (iDoc && iDoc.defaultView && iDoc.defaultView.paivitaRebuildZones) iDoc.defaultView.paivitaRebuildZones(); } catch(_){}
 }
 
 
