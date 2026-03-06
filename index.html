@@ -1637,12 +1637,10 @@ function closeBlockPicker() {
 }
 
 function selectBlock(blockId) {
+  const insertIdx = currentInsertAfterIndex;  // save BEFORE closeBlockPicker resets it
   closeBlockPicker();
   const tpl = BLOCK_TEMPLATES.find(t => t.id === blockId);
-  if (!tpl || currentInsertAfterIndex === null) return;
-
-  const insertIdx = currentInsertAfterIndex;
-  currentInsertAfterIndex = null;
+  if (!tpl || insertIdx === null) return;
 
   // Insert visually in iframe
   const insertId = 'pi-' + (++changeIdCounter);
