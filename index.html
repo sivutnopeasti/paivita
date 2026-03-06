@@ -1178,16 +1178,20 @@ function injectEditorScript(doc) {
       el.dataset.paivitaEditable = 'text';
     }
   });
+  // SVG text-elementit: merkitse ja lisaa hover outline SVG-vanhemmalle
+  doc.querySelectorAll('svg text').forEach(function(el) { el.dataset.paivitaEditable = 'text'; });
   doc.querySelectorAll('img').forEach(el => {
     el.dataset.paivitaEditable = 'image';
   });
 
   doc.addEventListener('mouseover', e => {
     if (!e.target.dataset.paivitaEditable) return;
-    e.target.classList.add('paivita-hover');
+    if (e.target.ownerSVGElement) { e.target.ownerSVGElement.classList.add('paivita-hover'); }
+    else { e.target.classList.add('paivita-hover'); }
   }, true);
   doc.addEventListener('mouseout', e => {
     e.target.classList.remove('paivita-hover');
+    if (e.target.ownerSVGElement) { e.target.ownerSVGElement.classList.remove('paivita-hover'); }
   }, true);
 
   function removeDelBtn() {
@@ -1508,8 +1512,12 @@ function applyInIframe(selector, type, value) {
     if (!el) return;
     if (type === 'image') { el.src = value; }
     else {
-      const esc = value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      el.innerHTML = esc.replace(/\n/g,'<br>');
+      if (el.namespaceURI === 'http://www.w3.org/2000/svg') {
+        el.textContent = value;
+      } else {
+        const esc = value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        el.innerHTML = esc.replace(/\n/g,'<br>');
+      }
       if (el.dataset.target !== undefined) el.dataset.target = value;
     }
   } catch (_) {}
