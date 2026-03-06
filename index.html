@@ -1369,7 +1369,7 @@ window.addEventListener('message', e => {
       try {
         const secs2=Array.from(_bd.querySelectorAll('section'));
         const el2=secs2[e.data.sectionIdx];
-        if(el2){ const id=++changeIdCounter; pendingChanges.push({id,type:'section-delete',label:'Lohko poistettu',sectionIdx:e.data.sectionIdx,sectionHint:e.data.sectionHint||'',tagName:'section',oldValue:'',newValue:''}); el2.remove(); }
+        if(el2){ const id=++changeIdCounter; const oldHtml=el2.outerHTML; const ph=_bd.createElement('div'); ph.id='paivita-undo-'+id; ph.style.display='none'; el2.parentNode.insertBefore(ph,el2.nextSibling); el2.remove(); pendingChanges.push({id,type:'section-delete',label:'Lohko poistettu',sectionIdx:e.data.sectionIdx,sectionHint:e.data.sectionHint||'',tagName:'section',oldValue:'',oldHtml,newValue:''}); }
       } catch(_){}
     }
     renderChangesList();
@@ -1580,6 +1580,8 @@ function removeChange(id) {
         const el = iDoc.querySelector(`[data-paivita-insert-id="${c.insertId}"]`);
         if (el) el.remove();
       } catch (_) {}
+    } else if (c.type === 'element-delete' || c.type === 'section-delete') {
+      try { const ph = document.getElementById('site-iframe').contentDocument.getElementById('paivita-undo-' + c.id); if (ph) ph.remove(); } catch (_) {}
     } else if (c.selector) {
       applyInIframe(c.selector, c.type === 'image-delete' ? 'image' : c.type, c.oldValue);
     }
@@ -1604,7 +1606,15 @@ function undoLastChange() {
       if (el) { el.src = last.oldValue; el.style.display = ''; }
     } catch (_) {}
   } else if (last.type === 'element-delete' || last.type === 'section-delete') {
-    // Element removed from DOM — cannot restore, just remove tracking entry
+    try {
+      const doc = document.getElementById('site-iframe').contentDocument;
+      const ph = doc.getElementById('paivita-undo-' + last.id);
+      if (ph && last.oldHtml) {
+        const tmp = doc.createElement('div'); tmp.innerHTML = last.oldHtml;
+        ph.parentNode.insertBefore(tmp.firstChild, ph);
+        ph.remove();
+      }
+    } catch (_) {}
   } else if (last.selector) {
     applyInIframe(last.selector, last.type, last.oldValue);
   }
@@ -1639,13 +1649,19 @@ function deleteSelectedElement() {
   if (!el) { clearSelection(); return; }
   const section = el.closest('[data-paivita-insert-id]') || el.closest('section');
   const inInserted = section && section.dataset.paivitaInsertId && pendingChanges.some(c => c.type==='block-insert' && c.insertId===section.dataset.paivitaInsertId);
+  const id = ++changeIdCounter;
+  const oldHtml = el.outerHTML;
+  // Placeholder pitää sijainnin undo-palautusta varten
+  const ph = doc.createElement('span');
+  ph.id = 'paivita-undo-' + id;
+  ph.style.display = 'none';
+  el.parentNode.insertBefore(ph, el.nextSibling);
   el.remove();
   if (inInserted) {
     notifyBlockUpdate(section);
   } else {
     const short = (selectedEl.text||'').substring(0,40);
-    const id = ++changeIdCounter;
-    pendingChanges.push({id, type:'element-delete', label:(TYPE_LABELS[selectedEl.tagName]||selectedEl.tagName)+': "'+short+'"', selector:selectedEl.selector, tagName:selectedEl.tagName, oldValue:selectedEl.text||'', newValue:''});
+    pendingChanges.push({id, type:'element-delete', label:(TYPE_LABELS[selectedEl.tagName]||selectedEl.tagName)+': "'+short+'"', selector:selectedEl.selector, tagName:selectedEl.tagName, oldValue:selectedEl.text||'', oldHtml, newValue:''});
     renderChangesList();
   }
   clearSelection();
