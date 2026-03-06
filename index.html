@@ -1320,7 +1320,22 @@ function injectEditorScript(doc) {
       sec.after(zone);
     });
   };
-  doc.defaultView.paivitaRebuildZones();}
+  doc.defaultView.paivitaRebuildZones();
+  // Mini delete-nappi jokaiselle .stat-item:lle
+  doc.querySelectorAll('.stat-item').forEach(function(item) {
+    item.style.position = 'relative';
+    var dBtn = doc.createElement('button');
+    dBtn.textContent = '\u00d7'; dBtn.title = 'Poista tilastorivi';
+    dBtn.style.cssText = 'position:absolute;top:4px;right:4px;width:20px;height:20px;border:1px solid #fca5a5;border-radius:3px;background:#fee2e2;color:#b91c1c;font-size:11px;cursor:pointer;font-weight:700;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.15s;z-index:9999;line-height:1;padding:0;pointer-events:none;';
+    dBtn.addEventListener('click', function(ev) {
+      ev.stopPropagation(); ev.preventDefault();
+      window.parent.postMessage({source:'paivita-editor', type:'delete-element-request', selector:buildSelector(item, doc), label:'Tilastorivi poistettu'}, '*');
+    });
+    item.appendChild(dBtn);
+    item.addEventListener('mouseenter', function() { dBtn.style.opacity='1'; dBtn.style.pointerEvents='all'; });
+    item.addEventListener('mouseleave', function() { dBtn.style.opacity='0'; dBtn.style.pointerEvents='none'; });
+  });
+}
 
 function buildSelector(el, doc) {
   const path = [];
@@ -1353,6 +1368,21 @@ window.addEventListener('message', e => {
   }
   if (e.data.type === 'block-insert-request') {
     openBlockPicker(e.data.afterIndex);
+    return;
+  }
+  if (e.data.type === 'delete-element-request') {
+    const _doc = document.getElementById('site-iframe').contentDocument;
+    const _el = _doc.querySelector(e.data.selector);
+    if (!_el) return;
+    const _sec = _el.closest('[data-paivita-insert-id]') || _el.closest('section');
+    const _inIns = _sec && _sec.dataset.paivitaInsertId && pendingChanges.some(c => c.type==='block-insert' && c.insertId===_sec.dataset.paivitaInsertId);
+    const _id = ++changeIdCounter;
+    const _oldHtml = _el.outerHTML;
+    const _ph = _doc.createElement('span'); _ph.id = 'paivita-undo-' + _id; _ph.style.display = 'none';
+    _el.parentNode.insertBefore(_ph, _el.nextSibling);
+    _el.remove();
+    if (_inIns) { notifyBlockUpdate(_sec); }
+    else { pendingChanges.push({id:_id, type:'element-delete', label:e.data.label||'Elementti poistettu', selector:e.data.selector, tagName:(_el.tagName||'div').toLowerCase(), oldValue:'', oldHtml:_oldHtml, newValue:''}); renderChangesList(); }
     return;
   }
   if (e.data.type === 'block-html-update') {
