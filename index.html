@@ -1172,8 +1172,9 @@ function injectEditorScript(doc) {
     }
   });
   // Merkitse myös kaikki leaf-divit (stat-number, stat-label ym. joilla ei ole lapsi-elementtejä)
-  doc.querySelectorAll('div, section > *, article, header, footer').forEach(el => {
-    if (!el.dataset.paivitaEditable && el.childElementCount === 0 && el.textContent.trim().length > 0) {
+  const skipTags = new Set(['script','style','noscript','svg','path','use','symbol','defs','meta','link','br','hr','input','textarea','select','option']);
+  doc.querySelectorAll('*').forEach(el => {
+    if (!el.dataset.paivitaEditable && el.childElementCount === 0 && el.textContent.trim().length > 0 && !skipTags.has(el.tagName.toLowerCase())) {
       el.dataset.paivitaEditable = 'text';
     }
   });
