@@ -1460,7 +1460,11 @@ function showElementEditor(data) {
         <label>Muokkaa tekstiä</label>
         <textarea id="new-text" rows="4" style="resize:vertical;min-height:80px;"></textarea>
       </div>
-      <button class="delete-img-btn" onclick="deleteSelectedElement()" style="margin-top:8px;">✕ Poista elementti sivulta</button>`;
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+        <button class="delete-img-btn" onclick="deleteSelectedElement()">✕ Poista elementti sivulta</button>
+        <button class="delete-img-btn" onclick="deleteParentSection()" style="background:#fff0f0;border-color:#fca5a5;">✕ Poista koko lohko sisältöineen</button>
+        <p style="font-size:0.73rem;color:#6b7280;margin:0;line-height:1.5;">Poiston voi kumota: <strong>Ctrl+Z</strong>, "Kumoa viimeisin" tai poistamalla merkinnän muutoslistalta.</p>
+      </div>`;
 
     const newTextEl = document.getElementById('new-text');
     newTextEl.value = data.text;
@@ -1662,6 +1666,36 @@ function deleteSelectedElement() {
   } else {
     const short = (selectedEl.text||'').substring(0,40);
     pendingChanges.push({id, type:'element-delete', label:(TYPE_LABELS[selectedEl.tagName]||selectedEl.tagName)+': "'+short+'"', selector:selectedEl.selector, tagName:selectedEl.tagName, oldValue:selectedEl.text||'', oldHtml, newValue:''});
+    renderChangesList();
+  }
+  clearSelection();
+}
+
+function deleteParentSection() {
+  if (!selectedEl) return;
+  const doc = document.getElementById('site-iframe').contentDocument;
+  const el = doc.querySelector(selectedEl.selector);
+  if (!el) { clearSelection(); return; }
+  const section = el.closest('section');
+  if (!section) { clearSelection(); return; }
+  const insertId = section.dataset.paivitaInsertId || '';
+  if (insertId && pendingChanges.some(c => c.type==='block-insert' && c.insertId===insertId)) {
+    // Inserted block: remove from pendingChanges + DOM
+    pendingChanges = pendingChanges.filter(x => !(x.type==='block-insert' && x.insertId===insertId));
+    section.remove();
+    renderChangesList();
+  } else {
+    // Original section: placeholder + pendingChange
+    const id = ++changeIdCounter;
+    const oldHtml = section.outerHTML;
+    const secs = Array.from(doc.querySelectorAll('section'));
+    const sectionIdx = secs.indexOf(section);
+    const ph = doc.createElement('div');
+    ph.id = 'paivita-undo-' + id;
+    ph.style.display = 'none';
+    section.parentNode.insertBefore(ph, section.nextSibling);
+    section.remove();
+    pendingChanges.push({id, type:'section-delete', label:'Lohko poistettu', sectionIdx, sectionHint:oldHtml.substring(0,120), tagName:'section', oldValue:'', oldHtml, newValue:''});
     renderChangesList();
   }
   clearSelection();
