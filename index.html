@@ -1257,6 +1257,8 @@ function injectEditorScript(doc) {
     const el = e.target;
     if (el.id === 'paivita-del-btn') return;
     if (el.closest('[data-paivita-add-card]') || el.closest('[data-paivita-add-img]') || el.closest('[data-paivita-add-price-row]')) return;
+    // Jos elementti on jo inline-muokkauksessa, älä häiritse
+    if (el.isContentEditable) return;
 
     // Estä linkkinavigaatio aina
     if (el.closest('a[href]')) e.preventDefault();
@@ -1329,6 +1331,47 @@ function injectEditorScript(doc) {
       alt:      target.alt  || null,
       selector,
     }, '*');
+
+    // ─── Inline tekstimuokkaus ──────────────────────────────────
+    if (type === 'text') {
+      target.setAttribute('contenteditable', 'plaintext-only');
+      target.style.outline = '2px solid #1e5bb5';
+      target.style.outlineOffset = '2px';
+      target.style.borderRadius = '3px';
+      // Aseta kursori klikkauskohtaan
+      try {
+        if (doc.caretRangeFromPoint) {
+          var _r = doc.caretRangeFromPoint(e.clientX, e.clientY);
+          if (_r) { var _s = doc.defaultView.getSelection(); _s.removeAllRanges(); _s.addRange(_r); }
+        }
+      } catch(_) {}
+      target.focus();
+      var _origText = target.innerText;
+      function _saveInline() {
+        var _newText = target.innerText;
+        target.removeAttribute('contenteditable');
+        target.style.outline = '';
+        target.style.outlineOffset = '';
+        target.style.borderRadius = '';
+        if (_newText !== _origText) {
+          window.parent.postMessage({
+            source: 'paivita-editor', type: 'text-inline-update',
+            selector: selector, oldText: _origText, newText: _newText,
+          }, '*');
+        }
+      }
+      target.addEventListener('blur', _saveInline, { once: true });
+      target.addEventListener('keydown', function _inlineKey(ev) {
+        if (ev.key === 'Escape') {
+          target.innerText = _origText;
+          target.removeAttribute('contenteditable');
+          target.style.outline = '';
+          target.style.outlineOffset = '';
+          target.style.borderRadius = '';
+          target.removeEventListener('keydown', _inlineKey);
+        }
+      });
+    }
   }, true);
   // Lisaa "+" zonet section-elementtien valiin
   doc.defaultView.paivitaRebuildZones = function() {
@@ -1459,6 +1502,34 @@ window.addEventListener('message', e => {
   }
   if (e.data.type === 'block-delete') {
     showBlockDeleteConfirm(e.data);
+    return;
+  }
+  if (e.data.type === 'text-inline-update') {
+    try {
+      const iDoc = document.getElementById('site-iframe').contentDocument;
+      const el = iDoc.querySelector(e.data.selector);
+      if (!el) return;
+      const psec = el.closest('[data-paivita-insert-id]');
+      if (psec && pendingChanges.some(c => c.type === 'block-insert' && c.insertId === psec.dataset.paivitaInsertId)) {
+        notifyBlockUpdate(psec);
+      } else {
+        const id = ++changeIdCounter;
+        pendingChanges.push({
+          id, type: 'text',
+          label: 'Teksti: ' + e.data.newText.trim().slice(0, 30),
+          selector: e.data.selector,
+          tagName: el.tagName.toLowerCase(),
+          oldValue: e.data.oldText,
+          newValue: e.data.newText,
+        });
+        renderChangesList();
+      }
+      // Synkkaa vasen paneeli jos sama elementti valittuna
+      if (selectedEl && selectedEl.selector === e.data.selector) {
+        const ta = document.getElementById('txt-input');
+        if (ta) ta.value = e.data.newText;
+      }
+    } catch(_) {}
     return;
   }
   if (hasUnsavedEdit) {
