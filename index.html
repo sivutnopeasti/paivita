@@ -1047,13 +1047,10 @@ function getSiteColors(iDoc) {
 }
 
 function notifyBlockUpdate(sectionEl) {
-  var tb = sectionEl.querySelector('[data-paivita-block-toolbar]');
-  var tbCss;
-  if (tb) { tbCss = tb.style.cssText; tb.style.display = 'none'; }
   var clone = sectionEl.cloneNode(true);
-  clone.querySelectorAll('[data-paivita-add-card],[data-paivita-add-img]').forEach(function(el){ el.remove(); });
+  clone.querySelectorAll('[data-paivita-add-card],[data-paivita-add-img],[data-paivita-block-toolbar],[data-paivita-card-toolbar]').forEach(function(el){ el.remove(); });
+  clone.removeAttribute('data-paivita-insert-id');
   var html = clone.outerHTML;
-  if (tb) tb.style.cssText = tbCss;
   var c = pendingChanges.find(function(x){ return x.type==='block-insert' && x.insertId===sectionEl.dataset.paivitaInsertId; });
   if (c) c.blockHtml = html;
 }
@@ -1597,6 +1594,21 @@ function applyChange() {
   }
 
   applyInIframe(selectedEl.selector, selectedEl.type, newValue);
+
+  // Jos elementti on uudessa (lisätyssä) lohkossa, päivitä blockHtml eikä erillistä muutosta
+  try {
+    const _doc = document.getElementById('site-iframe').contentDocument;
+    const _target = _doc.querySelector(selectedEl.selector);
+    if (_target) {
+      const _psec = _target.closest('[data-paivita-insert-id]');
+      if (_psec && pendingChanges.some(c => c.type === 'block-insert' && c.insertId === _psec.dataset.paivitaInsertId)) {
+        notifyBlockUpdate(_psec);
+        renderChangesList();
+        clearSelection();
+        return;
+      }
+    }
+  } catch(_) {}
 
   const id = ++changeIdCounter;
   const extra = (type === 'image') ? { fit: currentFitMode } : {};
@@ -2355,6 +2367,8 @@ function selectBlock(blockId) {
     tagName: 'section',
   });
   renderChangesList();
+  // Siivoa blockHtml heti: poistaa add-napit ja toolbarit ennen kuin käyttäjä voi tallentaa
+  if (_insertedEl) { try { notifyBlockUpdate(_insertedEl); } catch(_) {} }
   // Rebuild insert zones to include new block
   try { const _d = document.getElementById('site-iframe').contentDocument; if (_d && _d.defaultView && _d.defaultView.paivitaRebuildZones) _d.defaultView.paivitaRebuildZones(); } catch(_){}
 }
