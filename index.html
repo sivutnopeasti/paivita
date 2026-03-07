@@ -756,6 +756,12 @@ const BLOCK_TEMPLATES = [
     html: '<section style="padding:4rem 0;background:#fff;"><style>.pv-imgcap{border-radius:var(--radius-lg,12px);overflow:hidden;background:#fff;box-shadow:var(--shadow-sm,0 2px 8px rgba(0,0,0,0.07));border:1px solid var(--border,#e2e8f0);transition:box-shadow 0.25s ease,transform 0.25s ease;flex:0 0 calc(33.333% - 1rem);min-width:180px;max-width:360px;}.pv-imgcap:hover{box-shadow:var(--shadow-lg,0 8px 28px rgba(0,0,0,0.14));transform:translateY(-4px);}.pv-imgcap img{width:100%;display:block;aspect-ratio:1/1;object-fit:cover;transition:transform 0.5s ease;}.pv-imgcap:hover img{transform:scale(1.06);}.pv-imgcap-caption{padding:0.75rem;text-align:center;font-size:0.9rem;color:#4a5568;margin:0;}</style><div style="max-width:1100px;margin:0 auto;padding:0 1.5rem;"><div style="text-align:center;margin-bottom:2.5rem;"><p style="font-size:0.75rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent,#00c6ff);margin:0 0 0.5rem;">Kuvamme</p><h2 style="font-size:1.8rem;margin:0 0 0.75rem;">Kuvagalleria</h2><p style="color:#4a5568;font-size:1rem;max-width:520px;margin:0 auto;line-height:1.6;">Kuvaava teksti t&#228;h&#228;n.</p></div><div data-paivita-img-grid style="display:flex;flex-wrap:wrap;gap:1.5rem;align-items:flex-start;"><div class="pv-imgcap"><img src="https://placehold.co/360x360/e2e8f0/94a3b8?text=Kuva" alt=""><p class="pv-imgcap-caption">Kuvateksti t&#228;h&#228;n</p></div></div><button data-paivita-add-img style="margin-top:1.25rem;padding:0.6rem 1.4rem;background:#fff;border:2px dashed #cbd5e0;border-radius:8px;color:#64748b;font-size:0.9rem;cursor:pointer;display:block;font-weight:600;">+ Lis&#228;&#228; kuva</button></div></section>',
   },
   {
+    id: 'pricelist',
+    icon: '&#128179;',
+    label: 'Hinnasto',
+    html: '<section style="padding:4rem 0;background:#f8fafc;"><style>.pv-price-row{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border,#e2e8f0);gap:1rem;position:relative;}.pv-price-row:last-child{border-bottom:none;}.pv-price-name{font-weight:600;flex:1;}.pv-price-desc{color:#64748b;font-size:0.9rem;flex:2;}.pv-price-val{font-weight:700;color:var(--accent,#00c6ff);white-space:nowrap;}</style><div style="max-width:900px;margin:0 auto;padding:0 1.5rem;"><div style="text-align:center;margin-bottom:2.5rem;"><p style="font-size:0.75rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent,#00c6ff);margin:0 0 0.5rem;">Hinnasto</p><h2 style="font-size:1.8rem;margin:0 0 0.75rem;">Palveluiden hinnat</h2><p style="color:#4a5568;font-size:1rem;max-width:520px;margin:0 auto;line-height:1.6;">Hinnat sis. ALV.</p></div><div data-paivita-price-grid style="background:#fff;border-radius:var(--radius-lg,12px);box-shadow:var(--shadow-sm,0 2px 8px rgba(0,0,0,0.07));border:1px solid var(--border,#e2e8f0);overflow:hidden;"><div class="pv-price-row"><span class="pv-price-name">Palvelu 1</span><span class="pv-price-desc">Lyhyt kuvaus</span><span class="pv-price-val">50 &#8364;</span></div><div class="pv-price-row"><span class="pv-price-name">Palvelu 2</span><span class="pv-price-desc">Lyhyt kuvaus</span><span class="pv-price-val">80 &#8364;</span></div></div><button data-paivita-add-price-row style="margin-top:1.25rem;padding:0.6rem 1.4rem;background:#fff;border:2px dashed #cbd5e0;border-radius:8px;color:#64748b;font-size:0.9rem;cursor:pointer;display:block;font-weight:600;">+ Uusi rivi</button></div></section>',
+  },
+  {
     id: 'divider',
     icon: '&#10135;',
     label: 'Erotin',
@@ -1048,7 +1054,7 @@ function getSiteColors(iDoc) {
 
 function notifyBlockUpdate(sectionEl) {
   var clone = sectionEl.cloneNode(true);
-  clone.querySelectorAll('[data-paivita-add-card],[data-paivita-add-img],[data-paivita-block-toolbar],[data-paivita-card-toolbar]').forEach(function(el){ el.remove(); });
+  clone.querySelectorAll('[data-paivita-add-card],[data-paivita-add-img],[data-paivita-add-price-row],[data-paivita-block-toolbar],[data-paivita-card-toolbar],[data-paivita-price-row-toolbar]').forEach(function(el){ el.remove(); });
   clone.removeAttribute('data-paivita-insert-id');
   var html = clone.outerHTML;
   var c = pendingChanges.find(function(x){ return x.type==='block-insert' && x.insertId===sectionEl.dataset.paivitaInsertId; });
@@ -1219,7 +1225,7 @@ function injectEditorScript(doc) {
   // Merkitse myös kaikki leaf-divit (stat-number, stat-label ym. joilla ei ole lapsi-elementtejä)
   const skipTags = new Set(['script','style','noscript','svg','path','use','symbol','defs','meta','link','br','hr','input','textarea','select','option']);
   doc.querySelectorAll('*').forEach(el => {
-    if (!el.dataset.paivitaEditable && el.childElementCount === 0 && el.textContent.trim().length > 0 && !skipTags.has(el.tagName.toLowerCase()) && !el.hasAttribute('data-paivita-add-card') && !el.hasAttribute('data-paivita-add-img')) {
+    if (!el.dataset.paivitaEditable && el.childElementCount === 0 && el.textContent.trim().length > 0 && !skipTags.has(el.tagName.toLowerCase()) && !el.hasAttribute('data-paivita-add-card') && !el.hasAttribute('data-paivita-add-img') && !el.hasAttribute('data-paivita-add-price-row')) {
       el.dataset.paivitaEditable = 'text';
     }
   });
@@ -1250,7 +1256,7 @@ function injectEditorScript(doc) {
   doc.addEventListener('click', e => {
     const el = e.target;
     if (el.id === 'paivita-del-btn') return;
-    if (el.closest('[data-paivita-add-card]') || el.closest('[data-paivita-add-img]')) return;
+    if (el.closest('[data-paivita-add-card]') || el.closest('[data-paivita-add-img]') || el.closest('[data-paivita-add-price-row]')) return;
 
     // Estä linkkinavigaatio aina
     if (el.closest('a[href]')) e.preventDefault();
@@ -2134,6 +2140,29 @@ function injectPaivitaAnimCSS(iDoc) {
   iDoc.head.appendChild(st);
 }
 
+function injectPvCardCSS(iDoc) {
+  if (iDoc.getElementById('paivita-pv-css')) return;
+  var st = iDoc.createElement('style');
+  st.id = 'paivita-pv-css';
+  st.textContent =
+    '.pv-card{border-radius:var(--radius-lg,12px);overflow:hidden;background:#fff;box-shadow:var(--shadow-sm,0 2px 8px rgba(0,0,0,0.07));border:1px solid var(--border,#e2e8f0);transition:box-shadow 0.25s ease,transform 0.25s ease;flex:0 0 calc(33.333% - 1rem);min-width:220px;max-width:360px;}' +
+    '.pv-card:hover{box-shadow:var(--shadow-lg,0 8px 28px rgba(0,0,0,0.14));transform:translateY(-4px);}' +
+    '.pv-card .pv-img{width:100%;border-radius:0;margin-bottom:0;display:block;transition:transform 0.5s ease;}' +
+    '.pv-card:hover .pv-img{transform:scale(1.06);}' +
+    '.pv-card-body{padding:1.5rem;}' +
+    '.pv-imgcap{border-radius:var(--radius-lg,12px);overflow:hidden;background:#fff;box-shadow:var(--shadow-sm,0 2px 8px rgba(0,0,0,0.07));border:1px solid var(--border,#e2e8f0);transition:box-shadow 0.25s ease,transform 0.25s ease;flex:0 0 calc(33.333% - 1rem);min-width:180px;max-width:360px;}' +
+    '.pv-imgcap:hover{box-shadow:var(--shadow-lg,0 8px 28px rgba(0,0,0,0.14));transform:translateY(-4px);}' +
+    '.pv-imgcap img{width:100%;display:block;aspect-ratio:1/1;object-fit:cover;transition:transform 0.5s ease;}' +
+    '.pv-imgcap:hover img{transform:scale(1.06);}' +
+    '.pv-imgcap-caption{padding:0.75rem;text-align:center;font-size:0.9rem;color:#4a5568;margin:0;}' +
+    '.pv-price-row{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border,#e2e8f0);gap:1rem;position:relative;}' +
+    '.pv-price-row:last-child{border-bottom:none;}' +
+    '.pv-price-name{font-weight:600;flex:1;}' +
+    '.pv-price-desc{color:#64748b;font-size:0.9rem;flex:2;}' +
+    '.pv-price-val{font-weight:700;color:var(--accent,#00c6ff);white-space:nowrap;}';
+  iDoc.head.appendChild(st);
+}
+
 function applyGridItemAnim(item, grid, iDoc) {
   var animClass = null;
   var maxDelay = 0;
@@ -2169,6 +2198,7 @@ function applyGridItemAnim(item, grid, iDoc) {
 
 function setupGridBlock(sectionEl, iDoc) {
   if (!sectionEl || !iDoc) return;
+  injectPvCardCSS(iDoc);
   var sc = getSiteColors(iDoc);
   // korttirivistö
   var cardGrid = sectionEl.querySelector('[data-paivita-card-grid]');
@@ -2182,8 +2212,8 @@ function setupGridBlock(sectionEl, iDoc) {
         if (!grid) return;
         var n = grid.children.length + 1;
         var card = iDoc.createElement('div');
-        card.style.cssText = 'background:#fff;border-radius:12px;padding:1.75rem;box-shadow:0 2px 12px rgba(0,0,0,0.06);flex:0 0 calc(33.333% - 1rem);min-width:220px;max-width:360px;';
-        card.innerHTML = '<img src="https://placehold.co/300x200/e2e8f0/94a3b8?text=Kuva" alt="" style="width:100%;border-radius:8px;margin-bottom:0.75rem;display:block;"><h3 style="font-size:1.05rem;margin-bottom:0.5rem;">Palvelu '+n+'</h3><p style="color:#4a5568;font-size:0.9rem;line-height:1.6;">Kuvaus t&#228;h&#228;n.</p>';
+        card.className = 'pv-card';
+        card.innerHTML = '<img src="https://placehold.co/360x220/e2e8f0/94a3b8?text=Kuva" alt="" class="pv-img"><div class="pv-card-body"><h3 style="font-size:1.05rem;margin:0 0 0.5rem;">Palvelu '+n+'</h3><p style="color:#4a5568;font-size:0.9rem;line-height:1.6;margin:0;">Kuvaus t&#228;h&#228;n.</p></div>';
         card.querySelectorAll('h3,p').forEach(function(el){ el.dataset.paivitaEditable='text'; });
         card.querySelectorAll('img').forEach(function(el){ el.dataset.paivitaEditable='image'; });
         try {
@@ -2212,8 +2242,8 @@ function setupGridBlock(sectionEl, iDoc) {
         if (!igrid) return;
         var n2 = igrid.children.length + 1;
         var item = iDoc.createElement('div');
-        item.style.cssText = 'flex:0 0 calc(33.333% - 1rem);min-width:180px;max-width:360px;';
-        item.innerHTML = '<img src="https://placehold.co/300x300/e2e8f0/94a3b8?text=Kuva" alt="" style="width:100%;border-radius:8px;display:block;aspect-ratio:1/1;object-fit:cover;"><p style="margin-top:0.5rem;font-size:0.9rem;color:#4a5568;text-align:center;">Kuvateksti '+n2+'</p>';
+        item.className = 'pv-imgcap';
+        item.innerHTML = '<img src="https://placehold.co/360x360/e2e8f0/94a3b8?text=Kuva" alt=""><p class="pv-imgcap-caption">Kuvateksti '+n2+'</p>';
         item.querySelectorAll('p').forEach(function(el){ el.dataset.paivitaEditable='text'; });
         item.querySelectorAll('img').forEach(function(el){ el.dataset.paivitaEditable='image'; });
         try {
@@ -2226,6 +2256,51 @@ function setupGridBlock(sectionEl, iDoc) {
         notifyBlockUpdate(sectionEl);
       });
     }
+  }
+}
+
+function attachPriceRowToolbar(row, sectionEl, iDoc) {
+  var tb = iDoc.createElement('button');
+  tb.setAttribute('data-paivita-price-row-toolbar', 'true');
+  tb.textContent = '\u00d7';
+  tb.title = 'Poista rivi';
+  tb.style.cssText = 'position:absolute;right:6px;top:50%;transform:translateY(-50%);width:22px;height:22px;border:1px solid #fca5a5;border-radius:50%;background:#fee2e2;color:#b91c1c;font-size:12px;cursor:pointer;font-weight:700;display:none;align-items:center;justify-content:center;padding:0;z-index:10;';
+  tb.addEventListener('click', function(ev) {
+    ev.stopPropagation();
+    row.remove();
+    notifyBlockUpdate(sectionEl);
+  });
+  row.appendChild(tb);
+  row.addEventListener('mouseenter', function() { tb.style.display = 'flex'; });
+  row.addEventListener('mouseleave', function() { tb.style.display = 'none'; });
+}
+
+function setupPriceGrid(sectionEl, iDoc) {
+  if (!sectionEl || !iDoc) return;
+  injectPvCardCSS(iDoc);
+  var priceGrid = sectionEl.querySelector('[data-paivita-price-grid]');
+  if (!priceGrid) return;
+  Array.prototype.forEach.call(priceGrid.querySelectorAll('.pv-price-row'), function(row) {
+    attachPriceRowToolbar(row, sectionEl, iDoc);
+  });
+  var addRowBtn = sectionEl.querySelector('[data-paivita-add-price-row]');
+  if (addRowBtn) {
+    addRowBtn.addEventListener('click', function(ev) {
+      ev.stopPropagation();
+      var grid = sectionEl.querySelector('[data-paivita-price-grid]');
+      if (!grid) return;
+      var n = grid.querySelectorAll('.pv-price-row').length + 1;
+      var row = iDoc.createElement('div');
+      row.className = 'pv-price-row';
+      row.innerHTML = '<span class="pv-price-name" data-paivita-editable="text">Palvelu '+n+'</span><span class="pv-price-desc" data-paivita-editable="text">Lyhyt kuvaus</span><span class="pv-price-val" data-paivita-editable="text">0 &#8364;</span>';
+      try {
+        var bodyFont = iDoc.defaultView.getComputedStyle(iDoc.body).fontFamily;
+        row.querySelectorAll('span').forEach(function(el){ el.style.fontFamily = bodyFont; });
+      } catch(e) {}
+      grid.appendChild(row);
+      attachPriceRowToolbar(row, sectionEl, iDoc);
+      notifyBlockUpdate(sectionEl);
+    });
   }
 }
 
@@ -2358,6 +2433,7 @@ function selectBlock(blockId) {
   } catch (_) {}
   // Grid block setup runs outside try-catch to ensure it fires even if block toolbar fails
   try { setupGridBlock(_insertedEl, _insertedDoc); } catch(e) {}
+  try { setupPriceGrid(_insertedEl, _insertedDoc); } catch(e) {}
 
   pendingChanges.push({
     id: parseInt(insertId.replace('pi-', '')),
