@@ -2383,17 +2383,17 @@ async function submitChanges() {
   const status = document.getElementById('submit-status');
 
   btn.disabled  = true;
-  btn.innerHTML = '<span class="spinner"></span>Lähetetään...';
-  showStatus(status, 'info', 'Lähetetään muutospyyntö...');
+  btn.innerHTML = '<span class="spinner"></span>Tallennetaan...';
 
-  const imageChanges = {};
+  // Erottele suoraan commitoitavat kuvamuutokset ja PR-reittiin menevät muutokset
+  const directImgChanges = pendingChanges.filter(c => c.type === 'image');
+  const otherChanges     = pendingChanges.filter(c => c.type !== 'image');
+
   const textChanges  = {};
   const structuredChanges = [];
-
-  let imgIdx = 0;
   let txtIdx = 0;
 
-  pendingChanges.forEach((c) => {
+  otherChanges.forEach((c) => {
     if (c.type === 'image-delete') {
       structuredChanges.push({ type: 'image-delete', selector: c.selector, src: c.oldValue || '' });
     } else if (c.type === 'element-delete') {
@@ -2402,16 +2402,12 @@ async function submitChanges() {
       structuredChanges.push({ type: 'section-delete', section_idx: c.sectionIdx });
     } else if (c.type === 'block-insert') {
       structuredChanges.push({ type: 'block-insert', after_section_idx: c.afterIndex, label: c.blockLabel, html: c.blockHtml });
-    } else if (c.type === 'image') {
-      const role = `visual-img-${++imgIdx}`;
-      imageChanges[role] = { old: c.oldValue || '', new: c.newValue, objectFit: c.fit || 'cover' };
     } else {
       const key = `${c.tagName}_${++txtIdx}`;
       textChanges[key] = { old: c.oldValue, new: c.newValue };
     }
   });
 
-  // freeText käytetään vain uusille kuville (tarvitsee Clauden sijoittelupäätöksen)
   const freeTextLines = [];
   if (newSiteImages.length > 0) {
     freeTextLines.push('Lisättävät uudet kuvat sivulle:');
@@ -2421,52 +2417,71 @@ async function submitChanges() {
   }
   const freeText = freeTextLines.join('\n');
 
-  // Käytä sessioon rekisteröityä site_id:tä (ei site-config.json:n arvoa),
-  // jotta worker-autorisointi onnistuu aina
   const _stored = JSON.parse(localStorage.getItem('paivita_session') || '{}');
   const _siteId = _stored.siteId || currentConfig.site_id;
 
+  const hasOtherWork = otherChanges.length > 0 || certLogos.length > 0 || newSiteImages.length > 0;
+
   try {
-    const res = await fetch(WORKER_URL + '/update', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${sessionToken}`,
-      },
-      body: JSON.stringify({
-        site_id:      _siteId,
-        repo:         currentConfig.repo,
-        company:      currentConfig.company,
-        imageChanges,
-        textChanges,
-        freeText,
-        ...(structuredChanges.length > 0 && { structuredChanges }),
-        ...(certLogos.length > 0 && { certLogos }),
-      }),
-    });
-    if (!res.ok) {
-      const raw = await res.text();
-      let errMsg;
-      try { errMsg = JSON.parse(raw).error || raw; } catch { errMsg = raw || `HTTP ${res.status}`; }
-      throw new Error(errMsg);
+    // Vaihe 1: Kuvamuutokset suoraan main-haaraan (ei PR:ää)
+    if (directImgChanges.length > 0) {
+      showStatus(status, 'info', 'Tallennetaan kuvia suoraan sivustolle...');
+      const res = await fetch(WORKER_URL + '/direct-commit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionToken}` },
+        body: JSON.stringify({
+          site_id: _siteId,
+          repo:    currentConfig.repo,
+          imageChanges: directImgChanges.map(c => ({ old: c.oldValue || '', new: c.newValue })),
+        }),
+      });
+      if (!res.ok) {
+        const raw = await res.text();
+        let errMsg; try { errMsg = JSON.parse(raw).error || raw; } catch { errMsg = raw || `HTTP ${res.status}`; }
+        throw new Error('Kuvatallennus: ' + errMsg);
+      }
     }
 
-    const hasImageUpdates = Object.keys(imageChanges).length > 0
-      || certLogos.length > 0
-      || newSiteImages.length > 0
-      || pendingChanges.some(c => c.type === 'image-delete');
-    if (hasImageUpdates) {
-      showStatus(status, 'ok', '✓ Lähetetty! Kuvapäivitykset tarkistetaan ennen julkaisua – tähän voi mennä muutama vuorokausi.');
+    // Vaihe 2: Muut muutokset issue/PR-reittiin
+    if (hasOtherWork) {
+      showStatus(status, 'info', 'Lähetetään muut muutokset...');
+      const res = await fetch(WORKER_URL + '/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionToken}` },
+        body: JSON.stringify({
+          site_id:   _siteId,
+          repo:      currentConfig.repo,
+          company:   currentConfig.company,
+          imageChanges: {},
+          textChanges,
+          freeText,
+          ...(structuredChanges.length > 0 && { structuredChanges }),
+          ...(certLogos.length > 0 && { certLogos }),
+        }),
+      });
+      if (!res.ok) {
+        const raw = await res.text();
+        let errMsg; try { errMsg = JSON.parse(raw).error || raw; } catch { errMsg = raw || `HTTP ${res.status}`; }
+        throw new Error(errMsg);
+      }
+    }
+
+    // Tilailmoitus
+    if (directImgChanges.length > 0 && hasOtherWork) {
+      showStatus(status, 'ok', '✓ Kuvat tallennettu sivustolle! Muut muutokset lähetetty käsiteltäväksi.');
+    } else if (directImgChanges.length > 0) {
+      showStatus(status, 'ok', '✓ Kuvat tallennettu suoraan sivustolle!');
     } else {
       showStatus(status, 'ok', '✓ Lähetetty! Sivusto päivittyy muutamassa minuutissa.');
     }
+
     pendingChanges = [];
     certLogos = [];
     newSiteImages = [];
     renderCertLogos();
     renderNewImages();
     renderChangesList();
-    btn.textContent = '✓ Lähetetty';
+    btn.textContent = '✓ Tallennettu';
 
   } catch (e) {
     showStatus(status, 'error', 'Virhe: ' + e.message);
