@@ -34,6 +34,15 @@
       margin-left: auto; display: flex; align-items: center; gap: 0.75rem;
     }
     .topbar-company { font-size: 0.8rem; font-weight: 400; color: var(--accent); }
+    .topbar-history-btn {
+      background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.35);
+      color: #fff; padding: 0.2rem 0.65rem; border-radius: 6px;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer;
+      font-family: 'Montserrat', sans-serif; transition: background 0.15s;
+      display: flex; align-items: center; gap: 3px;
+    }
+    .topbar-history-btn:hover:not(:disabled) { background: rgba(255,255,255,0.28); }
+    .topbar-history-btn:disabled { opacity: 0.35; cursor: not-allowed; }
     .logout-btn {
       background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
       color: #fff; padding: 0.25rem 0.75rem; border-radius: 6px;
@@ -507,8 +516,23 @@
 <div class="topbar">
   Sivutnopeasti – Sivuston päivitys
   <div class="topbar-user" id="topbar-user" style="display:none">
+    <button id="topbar-undo-btn" class="topbar-history-btn" onclick="undoLastChange()" disabled title="Kumoa viimeisin (Ctrl+Z)">&#8629; Kumoa</button>
+    <button id="topbar-redo-btn" class="topbar-history-btn" onclick="redoLastChange()" disabled title="Tee uudelleen (Ctrl+Y)">&#8631; Uudelleen</button>
     <span class="topbar-company" id="topbar-site"></span>
     <button class="logout-btn" onclick="logout()">Kirjaudu ulos</button>
+  </div>
+</div>
+
+<!-- Vahvistusmodaali lohkon poistolle -->
+<div id="block-delete-confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;padding:1.75rem 2rem;max-width:390px;width:92%;box-shadow:0 12px 40px rgba(0,0,0,0.25);font-family:'Montserrat',sans-serif;">
+    <p style="font-size:1.05rem;font-weight:700;margin:0 0 0.6rem;color:#1a1a2e;">Poistetaanko lohko?</p>
+    <p style="color:#4a5568;font-size:0.875rem;line-height:1.55;margin:0 0 1rem;">Lohko ja kaikki sen sisältö poistetaan sivustolta.</p>
+    <p style="color:#6b7280;font-size:0.78rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:0.6rem 0.8rem;margin:0 0 1.5rem;line-height:1.55;">Muutoksen voi perua heti:<br><strong>Ctrl+Z</strong> tai <strong>&#8629; Kumoa</strong> -painikkeella yläpalkissa.</p>
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
+      <button onclick="closeBlockDeleteConfirm()" style="padding:0.5rem 1.25rem;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#374151;cursor:pointer;font-weight:600;font-size:0.875rem;font-family:'Montserrat',sans-serif;">Peruuta</button>
+      <button onclick="confirmBlockDelete()" style="padding:0.5rem 1.25rem;border:none;border-radius:8px;background:#b91c1c;color:#fff;cursor:pointer;font-weight:700;font-size:0.875rem;font-family:'Montserrat',sans-serif;">Poista lohko</button>
+    </div>
   </div>
 </div>
 
@@ -758,6 +782,7 @@ let currentResetToken = null;
 
 let currentConfig   = null;
 let pendingChanges  = [];
+let redoStack       = []; // kumotut muutokset uudelleen-toimintoa varten
 let certLogos       = []; // [{url, name}]
 let certNameCb      = null;
 let selectedEl      = null;
@@ -1430,18 +1455,7 @@ window.addEventListener('message', e => {
     return;
   }
   if (e.data.type === 'block-delete') {
-    const _bd = document.getElementById('site-iframe').contentDocument;
-    if (e.data.insertId) {
-      pendingChanges = pendingChanges.filter(x => !(x.type==='block-insert' && x.insertId===e.data.insertId));
-      try { const el2=_bd.querySelector(`[data-paivita-insert-id="${e.data.insertId}"]`); if(el2)el2.remove(); } catch(_){}
-    } else {
-      try {
-        const secs2=Array.from(_bd.querySelectorAll('section'));
-        const el2=secs2[e.data.sectionIdx];
-        if(el2){ const id=++changeIdCounter; const oldHtml=el2.outerHTML; const ph=_bd.createElement('div'); ph.id='paivita-undo-'+id; ph.style.display='none'; el2.parentNode.insertBefore(ph,el2.nextSibling); el2.remove(); pendingChanges.push({id,type:'section-delete',label:'Lohko poistettu',sectionIdx:e.data.sectionIdx,sectionHint:e.data.sectionHint||'',tagName:'section',oldValue:'',oldHtml,newValue:''}); }
-      } catch(_){}
-    }
-    renderChangesList();
+    showBlockDeleteConfirm(e.data);
     return;
   }
   if (hasUnsavedEdit) {
@@ -1560,6 +1574,7 @@ function clearSelection() {
 
 function applyChange() {
   if (!selectedEl) return;
+  redoStack = [];
 
   let oldValue, newValue, type, label;
 
@@ -1658,6 +1673,10 @@ function updateSubmitState() {
   document.getElementById('submit-btn').disabled = !hasChanges;
   const undoBtn = document.getElementById('undo-btn');
   if (undoBtn) undoBtn.disabled = pendingChanges.length === 0;
+  const topbarUndo = document.getElementById('topbar-undo-btn');
+  if (topbarUndo) topbarUndo.disabled = pendingChanges.length === 0;
+  const topbarRedo = document.getElementById('topbar-redo-btn');
+  if (topbarRedo) topbarRedo.disabled = redoStack.length === 0;
 }
 
 function renderChangesList() {
@@ -1703,9 +1722,46 @@ function removeChange(id) {
   renderChangesList();
 }
 
+// ─── Lohkon poisto – vahvistus ────────────────────────────────
+
+let _pendingBlockDelete = null;
+
+function showBlockDeleteConfirm(data) {
+  _pendingBlockDelete = data;
+  const m = document.getElementById('block-delete-confirm-modal');
+  m.style.display = 'flex';
+}
+
+function closeBlockDeleteConfirm() {
+  _pendingBlockDelete = null;
+  document.getElementById('block-delete-confirm-modal').style.display = 'none';
+}
+
+function confirmBlockDelete() {
+  if (!_pendingBlockDelete) return;
+  const data = _pendingBlockDelete;
+  closeBlockDeleteConfirm();
+  redoStack = [];
+  const _bd = document.getElementById('site-iframe').contentDocument;
+  if (data.insertId) {
+    pendingChanges = pendingChanges.filter(x => !(x.type==='block-insert' && x.insertId===data.insertId));
+    try { const el2=_bd.querySelector(`[data-paivita-insert-id="${data.insertId}"]`); if(el2)el2.remove(); } catch(_){}
+  } else {
+    try {
+      const secs2=Array.from(_bd.querySelectorAll('section'));
+      const el2=secs2[data.sectionIdx];
+      if(el2){ const id=++changeIdCounter; const oldHtml=el2.outerHTML; const ph=_bd.createElement('div'); ph.id='paivita-undo-'+id; ph.style.display='none'; el2.parentNode.insertBefore(ph,el2.nextSibling); el2.remove(); pendingChanges.push({id,type:'section-delete',label:'Lohko poistettu',sectionIdx:data.sectionIdx,sectionHint:data.sectionHint||'',tagName:'section',oldValue:'',oldHtml,newValue:''}); }
+    } catch(_){}
+  }
+  renderChangesList();
+}
+
+// ─── Undo / Redo ──────────────────────────────────────────────
+
 function undoLastChange() {
   if (!pendingChanges.length) return;
   const last = pendingChanges.pop();
+  redoStack.push(last);
   if (last.type === 'block-insert' && last.insertId) {
     try {
       const iDoc = document.getElementById('site-iframe').contentDocument;
@@ -1734,7 +1790,53 @@ function undoLastChange() {
   renderChangesList();
 }
 
+function redoLastChange() {
+  if (!redoStack.length) return;
+  const last = redoStack.pop();
+  if (last.type === 'block-insert' && last.insertId) {
+    // block-insert redo: skip (positional re-insert too complex)
+    redoStack.push(last);
+    return;
+  } else if (last.type === 'image-delete') {
+    try {
+      const doc = document.getElementById('site-iframe').contentDocument;
+      const el = doc.querySelector(last.selector);
+      if (el) { el.src = ''; el.style.display = 'none'; }
+    } catch (_) {}
+  } else if (last.type === 'element-delete') {
+    try {
+      const doc = document.getElementById('site-iframe').contentDocument;
+      const el = doc.querySelector(last.selector);
+      if (el) {
+        const id2 = ++changeIdCounter;
+        const ph = doc.createElement('span'); ph.id = 'paivita-undo-' + id2; ph.style.display = 'none';
+        el.parentNode.insertBefore(ph, el.nextSibling);
+        el.remove();
+        last.id = id2;
+      }
+    } catch (_) {}
+  } else if (last.type === 'section-delete') {
+    try {
+      const doc = document.getElementById('site-iframe').contentDocument;
+      const secs = Array.from(doc.querySelectorAll('section'));
+      const el = secs[last.sectionIdx];
+      if (el) {
+        const id2 = ++changeIdCounter;
+        const ph = doc.createElement('div'); ph.id = 'paivita-undo-' + id2; ph.style.display = 'none';
+        el.parentNode.insertBefore(ph, el.nextSibling);
+        el.remove();
+        last.id = id2;
+      }
+    } catch (_) {}
+  } else if (last.selector) {
+    applyInIframe(last.selector, last.type, last.newValue);
+  }
+  pendingChanges.push(last);
+  renderChangesList();
+}
+
 function handleImageDelete(data) {
+  redoStack = [];
   // Piilota kuva iframessa
   try {
     const doc = document.getElementById('site-iframe').contentDocument;
@@ -1757,6 +1859,7 @@ function deleteSelectedImage() {
 
 function deleteSelectedElement() {
   if (!selectedEl || selectedEl.type === 'image') return;
+  redoStack = [];
   const doc = document.getElementById('site-iframe').contentDocument;
   const el = doc.querySelector(selectedEl.selector);
   if (!el) { clearSelection(); return; }
@@ -2293,10 +2396,16 @@ document.getElementById('reset-password2').addEventListener('keydown', e => { if
 
 // Ctrl+Z / Cmd+Z — kumoa viimeisin muutos
 document.addEventListener('keydown', e => {
+  const active = document.activeElement;
+  const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-    const active = document.activeElement;
-    const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
     if (!isInput) { e.preventDefault(); undoLastChange(); }
+  }
+  if (((e.ctrlKey || e.metaKey) && e.key === 'y') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z')) {
+    if (!isInput) { e.preventDefault(); redoLastChange(); }
+  }
+  if (e.key === 'Escape') {
+    closeBlockDeleteConfirm();
   }
 });
 </script>
