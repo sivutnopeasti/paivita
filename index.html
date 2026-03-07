@@ -2083,6 +2083,78 @@ function attachImgCapToolbar(item, parentEl, iDoc) {
   item.addEventListener('mouseleave',function(ev){ if(!ev.relatedTarget||!item.contains(ev.relatedTarget)){itb.style.opacity='0';itb.style.pointerEvents='none';} });
 }
 
+// ─── Animaatioiden tunnistus ja lisäys uusille korteille ──────
+
+var PAIVITA_RANDOM_ANIMS = ['paivita-anim-fadeup','paivita-anim-fadein','paivita-anim-zoom','paivita-anim-slideleft'];
+
+function detectCardAnimClass(card, iDoc) {
+  // Tunnistaa animaatioluokan tarkistamalla mikä luokka asettaa opacity:0
+  var cls = Array.from(card.classList);
+  for (var i = 0; i < cls.length; i++) {
+    var c = cls[i];
+    if (c.startsWith('paivita-')) continue; // skip our own classes
+    try {
+      var tmp = iDoc.createElement('div');
+      tmp.className = c;
+      tmp.style.cssText = 'position:absolute;top:-9999px;left:-9999px;width:1px;height:1px;';
+      iDoc.body.appendChild(tmp);
+      var opacity = parseFloat(iDoc.defaultView.getComputedStyle(tmp).opacity);
+      tmp.remove();
+      if (opacity < 0.5) return c;
+    } catch(e) {}
+  }
+  return null;
+}
+
+function injectPaivitaAnimCSS(iDoc) {
+  if (iDoc.getElementById('paivita-custom-anims')) return;
+  var st = iDoc.createElement('style');
+  st.id = 'paivita-custom-anims';
+  st.textContent =
+    '.paivita-anim-fadeup{opacity:0;transform:translateY(28px);transition:opacity .55s ease,transform .55s ease}' +
+    '.paivita-anim-fadeup.visible{opacity:1;transform:translateY(0)}' +
+    '.paivita-anim-fadein{opacity:0;transition:opacity .6s ease}' +
+    '.paivita-anim-fadein.visible{opacity:1}' +
+    '.paivita-anim-zoom{opacity:0;transform:scale(0.92);transition:opacity .5s ease,transform .5s ease}' +
+    '.paivita-anim-zoom.visible{opacity:1;transform:scale(1)}' +
+    '.paivita-anim-slideleft{opacity:0;transform:translateX(-22px);transition:opacity .5s ease,transform .5s ease}' +
+    '.paivita-anim-slideleft.visible{opacity:1;transform:translateX(0)}';
+  iDoc.head.appendChild(st);
+}
+
+function applyGridItemAnim(item, grid, iDoc) {
+  var animClass = null;
+  var maxDelay = 0;
+  var siblings = Array.from(grid.children);
+  for (var i = 0; i < siblings.length; i++) {
+    var s = siblings[i];
+    if (s === item) continue;
+    if (!animClass) {
+      var ac = detectCardAnimClass(s, iDoc);
+      if (ac) animClass = ac;
+    }
+    var d = parseInt(s.dataset.delay || '0', 10);
+    if (d > maxDelay) maxDelay = d;
+  }
+  if (!animClass) {
+    animClass = PAIVITA_RANDOM_ANIMS[Math.floor(Math.random() * PAIVITA_RANDOM_ANIMS.length)];
+    injectPaivitaAnimCSS(iDoc);
+  }
+  item.classList.add(animClass);
+  item.dataset.delay = String(maxDelay + 1);
+  try {
+    var obs = new iDoc.defaultView.IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (!e.isIntersecting) return;
+        var delay = parseFloat(e.target.dataset.delay || '0') * 0.08;
+        setTimeout(function() { e.target.classList.add('visible'); }, delay * 1000);
+        obs.disconnect();
+      });
+    }, { threshold: 0.1 });
+    obs.observe(item);
+  } catch(e) {}
+}
+
 function setupGridBlock(sectionEl, iDoc) {
   if (!sectionEl || !iDoc) return;
   var sc = getSiteColors(iDoc);
@@ -2110,6 +2182,7 @@ function setupGridBlock(sectionEl, iDoc) {
           card.querySelectorAll('p').forEach(function(el){ el.style.fontFamily=bodyFont; });
         } catch(e){}
         grid.appendChild(card);
+        applyGridItemAnim(card, grid, iDoc);
         attachCardToolbar(card, sectionEl, iDoc, sc);
         notifyBlockUpdate(sectionEl);
       });
@@ -2136,6 +2209,7 @@ function setupGridBlock(sectionEl, iDoc) {
           item.querySelectorAll('p').forEach(function(el){ el.style.fontFamily=bodyFont2; });
         } catch(e2){}
         igrid.appendChild(item);
+        applyGridItemAnim(item, igrid, iDoc);
         attachImgCapToolbar(item, sectionEl, iDoc);
         notifyBlockUpdate(sectionEl);
       });
