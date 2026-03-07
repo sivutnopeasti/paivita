@@ -1355,6 +1355,25 @@ function injectEditorScript(doc) {
     item.addEventListener('mouseenter', function() { dBtn.style.opacity='1'; dBtn.style.pointerEvents='all'; });
     item.addEventListener('mouseleave', function() { dBtn.style.opacity='0'; dBtn.style.pointerEvents='none'; });
   });
+  // Poista-nappi jokaiselle section-elementille (hover, oikeassa yläkulmassa)
+  doc.querySelectorAll('section').forEach(function(sec) {
+    if (sec.querySelector('[data-paivita-block-toolbar]')) return;
+    sec.style.position = 'relative';
+    var btb = doc.createElement('div');
+    btb.setAttribute('data-paivita-block-toolbar','true');
+    btb.style.cssText='position:absolute;top:0;right:0;z-index:99999;display:flex;gap:3px;align-items:center;background:rgba(255,255,255,0.97);border:1px solid rgba(30,91,181,0.2);border-radius:0 0 0 8px;padding:4px 6px;opacity:0;transition:opacity 0.15s;pointer-events:none;box-shadow:-2px 2px 8px rgba(0,0,0,0.08);';
+    var bdelB=doc.createElement('button'); bdelB.textContent='\u00d7'; bdelB.title='Poista lohko';
+    bdelB.style.cssText='min-width:24px;height:24px;border:1px solid #fca5a5;border-radius:4px;background:#fee2e2;color:#b91c1c;font-size:12px;cursor:pointer;padding:0 4px;font-weight:700;';
+    bdelB.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      var _si=Array.from(doc.querySelectorAll('section')).indexOf(sec);
+      window.parent.postMessage({source:'paivita-editor',type:'block-delete',insertId:sec.dataset.paivitaInsertId||'',sectionIdx:_si,sectionHint:sec.outerHTML.substring(0,120)},'*');
+    });
+    btb.appendChild(bdelB);
+    sec.insertBefore(btb,sec.firstChild);
+    sec.addEventListener('mouseenter',function(){ btb.style.opacity='1'; btb.style.pointerEvents='all'; });
+    sec.addEventListener('mouseleave',function(ev){ if(!ev.relatedTarget||!sec.contains(ev.relatedTarget)){btb.style.opacity='0';btb.style.pointerEvents='none';} });
+  });
 }
 
 function buildSelector(el, doc) {
@@ -1508,7 +1527,6 @@ function showElementEditor(data) {
       </div>
       <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
         <button class="delete-img-btn" onclick="deleteSelectedElement()">✕ Poista elementti sivulta</button>
-        <button class="delete-img-btn" onclick="deleteParentSection()" style="background:#fff0f0;border-color:#fca5a5;">✕ Poista koko lohko sisältöineen</button>
         <p style="font-size:0.73rem;color:#6b7280;margin:0;line-height:1.5;">Poiston voi kumota: <strong>Ctrl+Z</strong>, "Kumoa viimeisin" tai poistamalla merkinnän muutoslistalta.</p>
       </div>`;
 
