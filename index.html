@@ -2282,8 +2282,15 @@ function selectBlock(blockId) {
         hSel.title='Otsikon koko'; hSel.style.cssText='font-size:11px;padding:2px 4px;border:1px solid #e2e8f0;border-radius:4px;background:#fff;height:24px;font-weight:700;color:#1e5bb5;cursor:pointer;';
         const curH = newEl.querySelector('h1,h2,h3,h4,h5,h6');
         [['h1','Pääotsikko'],['h2','Väliotsikko'],['h3','Alaotsikko'],['h4','Pienin']].forEach(function(p){ var o=iDoc.createElement('option'); o.value=p[0]; o.textContent=p[1]; if(curH&&curH.tagName.toLowerCase()===p[0])o.selected=true; hSel.appendChild(o); });
+        // Palauttaa valitun elementin jos se on tässä lohkossa
+        function getSelInBlock() {
+          if (!selectedEl || !selectedEl.selector) return null;
+          try { var t = iDoc.querySelector(selectedEl.selector); return (t && newEl.contains(t)) ? t : null; } catch(e) { return null; }
+        }
         hSel.addEventListener('change', () => {
-          const oldH=newEl.querySelector('h1,h2,h3,h4,h5,h6'); if(!oldH)return;
+          var sel = getSelInBlock();
+          var oldH = (sel && /^h[1-6]$/i.test(sel.tagName)) ? sel : newEl.querySelector('h1,h2,h3,h4,h5,h6');
+          if(!oldH) return;
           const nh=iDoc.createElement(hSel.value); nh.innerHTML=oldH.innerHTML; nh.style.cssText=oldH.style.cssText; nh.dataset.paivitaEditable='text';
           oldH.replaceWith(nh);
           notifyBlockUpdate(newEl);
@@ -2306,13 +2313,13 @@ function selectBlock(blockId) {
           fsSel.appendChild(fo);
         });
         fsSel.addEventListener('change', function() {
-          var h = newEl.querySelector('h1,h2,h3,h4,h5,h6'); if (!h) return;
-          h.style.fontSize = fsSel.value; notifyBlockUpdate(newEl);
+          var target = getSelInBlock() || newEl.querySelector('h1,h2,h3,h4,h5,h6'); if (!target) return;
+          target.style.fontSize = fsSel.value; notifyBlockUpdate(newEl);
         });
         // Text color
         const tci = iDoc.createElement('input'); tci.type='color'; tci.value='#1a1a2e';
         tci.title='Tekstin v\u00e4ri'; tci.style.cssText='width:24px;height:24px;border:1px solid #e2e8f0;border-radius:4px;padding:1px;cursor:pointer;';
-        tci.addEventListener('input', () => { newEl.querySelectorAll('h1,h2,h3,h4,h5,h6,p,a,span,button').forEach(el => { if(!tb.contains(el)) el.style.color=tci.value; }); notifyBlockUpdate(newEl); });
+        tci.addEventListener('input', () => { var sel=getSelInBlock(); if(sel){sel.style.color=tci.value;}else{newEl.querySelectorAll('h1,h2,h3,h4,h5,h6,p,a,span,button').forEach(el=>{if(!tb.contains(el))el.style.color=tci.value;});} notifyBlockUpdate(newEl); });
         // BG color
         const bgWrap=iDoc.createElement('div'); bgWrap.style.cssText='position:relative;display:inline-flex;';
         const bgBtn=iDoc.createElement('button'); bgBtn.textContent='BG'; bgBtn.title='Taustav\u00e4ri';
