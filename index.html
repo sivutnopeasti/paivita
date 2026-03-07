@@ -1374,7 +1374,7 @@ function injectEditorScript(doc) {
     item.style.position = 'relative';
     var dBtn = doc.createElement('button');
     dBtn.textContent = '\u00d7'; dBtn.title = 'Poista tilastorivi';
-    dBtn.style.cssText = 'position:absolute;top:4px;right:4px;width:20px;height:20px;border:1px solid #fca5a5;border-radius:3px;background:#fee2e2;color:#b91c1c;font-size:11px;cursor:pointer;font-weight:700;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.15s;z-index:9999;line-height:1;padding:0;pointer-events:none;';
+    dBtn.style.cssText = 'position:absolute;top:4px;right:4px;width:20px;height:20px;border:1px solid #fca5a5;border-radius:3px;background:#fee2e2;color:#b91c1c;font-size:11px;cursor:pointer;font-weight:700;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.05s;z-index:9999;line-height:1;padding:0;pointer-events:none;';
     dBtn.addEventListener('click', function(ev) {
       ev.stopPropagation(); ev.preventDefault();
       window.parent.postMessage({source:'paivita-editor', type:'delete-element-request', selector:buildSelector(item, doc), label:'Tilastorivi poistettu'}, '*');
@@ -1389,7 +1389,7 @@ function injectEditorScript(doc) {
     sec.style.position = 'relative';
     var btb = doc.createElement('div');
     btb.setAttribute('data-paivita-block-toolbar','true');
-    btb.style.cssText='position:absolute;top:0;right:0;z-index:99999;display:flex;gap:3px;align-items:center;background:rgba(255,255,255,0.97);border:1px solid rgba(30,91,181,0.2);border-radius:0 0 0 8px;padding:4px 6px;opacity:0;transition:opacity 0.15s;pointer-events:none;box-shadow:-2px 2px 8px rgba(0,0,0,0.08);';
+    btb.style.cssText='position:absolute;top:0;right:0;z-index:99999;display:flex;gap:3px;align-items:center;background:rgba(255,255,255,0.97);border:1px solid rgba(30,91,181,0.2);border-radius:0 0 0 8px;padding:4px 6px;opacity:0;transition:opacity 0.05s;pointer-events:none;box-shadow:-2px 2px 8px rgba(0,0,0,0.08);';
     var bdelB=doc.createElement('button'); bdelB.textContent='\u00d7'; bdelB.title='Poista lohko';
     bdelB.style.cssText='min-width:24px;height:24px;border:1px solid #fca5a5;border-radius:4px;background:#fee2e2;color:#b91c1c;font-size:12px;cursor:pointer;padding:0 4px;font-weight:700;';
     bdelB.addEventListener('click',function(ev){
@@ -2051,10 +2051,28 @@ function attachCardToolbar(card, parentEl, iDoc, sc) {
   card.style.position = 'relative';
   var ctb = iDoc.createElement('div');
   ctb.setAttribute('data-paivita-card-toolbar','true');
-  ctb.style.cssText='position:absolute;top:4px;right:4px;z-index:99999;display:flex;gap:2px;align-items:center;background:rgba(255,255,255,0.97);border:1px solid rgba(30,91,181,0.2);border-radius:6px;padding:3px 4px;opacity:0;transition:opacity 0.15s;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.1);';
+  ctb.style.cssText='position:absolute;top:4px;right:4px;z-index:99999;display:flex;gap:2px;align-items:center;background:rgba(255,255,255,0.97);border:1px solid rgba(30,91,181,0.2);border-radius:6px;padding:3px 4px;opacity:0;transition:opacity 0.05s;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.1);';
   var ctci=iDoc.createElement('input'); ctci.type='color'; ctci.value='#1a1a2e';
   ctci.title='Tekstin väri'; ctci.style.cssText='width:22px;height:22px;border:1px solid #e2e8f0;border-radius:3px;padding:1px;cursor:pointer;';
   ctci.addEventListener('input',function(){ card.querySelectorAll('h1,h2,h3,h4,p,span').forEach(function(el){ if(!ctb.contains(el)) el.style.color=ctci.value; }); notifyBlockUpdate(parentEl); });
+  // Font family selector
+  var cffSel=iDoc.createElement('select'); cffSel.title='Fontti';
+  cffSel.style.cssText='font-size:10px;padding:1px 3px;border:1px solid #e2e8f0;border-radius:3px;background:#fff;height:22px;color:#374151;cursor:pointer;max-width:90px;';
+  (function(){
+    var ffSet=new Set();
+    iDoc.querySelectorAll('h1,h2,h3,h4,h5,h6,p,body').forEach(function(el){
+      if(ctb.contains(el)) return;
+      var ff=iDoc.defaultView.getComputedStyle(el).fontFamily;
+      var first=ff.split(',')[0].replace(/['"]/g,'').trim();
+      if(first) ffSet.add(first);
+    });
+    var ffList=Array.from(ffSet).slice(0,6);
+    ffList.forEach(function(f){ var o=iDoc.createElement('option'); o.value=f; o.textContent=f.length>12?f.slice(0,11)+'…':f; cffSel.appendChild(o); });
+    // Set current
+    var curFF=card.querySelector('h3,h2,p');
+    if(curFF){ var cv=iDoc.defaultView.getComputedStyle(curFF).fontFamily.split(',')[0].replace(/['"]/g,'').trim(); Array.from(cffSel.options).forEach(function(o){if(o.value===cv)o.selected=true;}); }
+  })();
+  cffSel.addEventListener('change',function(){ card.querySelectorAll('h1,h2,h3,h4,h5,h6,p,span,a').forEach(function(el){ if(!ctb.contains(el)) el.style.fontFamily=cffSel.value; }); notifyBlockUpdate(parentEl); });
   var cbgWrap=iDoc.createElement('div'); cbgWrap.style.cssText='position:relative;display:inline-flex;';
   var cbgBtn=iDoc.createElement('button'); cbgBtn.textContent='BG'; cbgBtn.title='Kortin väri';
   cbgBtn.style.cssText='min-width:22px;height:22px;border:1px solid #e2e8f0;border-radius:3px;background:#f0f4f8;cursor:pointer;font-size:9px;font-weight:700;color:#1e5bb5;padding:0 3px;';
@@ -2081,7 +2099,7 @@ function attachCardToolbar(card, parentEl, iDoc, sc) {
   var cdelBtn=iDoc.createElement('button'); cdelBtn.textContent='\u00d7'; cdelBtn.title='Poista kortti';
   cdelBtn.style.cssText='min-width:22px;height:22px;border:1px solid #fca5a5;border-radius:3px;background:#fee2e2;color:#b91c1c;font-size:11px;cursor:pointer;padding:0 3px;font-weight:700;';
   cdelBtn.addEventListener('click',function(ev){ ev.stopPropagation(); card.remove(); notifyBlockUpdate(parentEl); });
-  ctb.appendChild(ctci); ctb.appendChild(cbgWrap); ctb.appendChild(cdelBtn);
+  ctb.appendChild(ctci); ctb.appendChild(cffSel); ctb.appendChild(cbgWrap); ctb.appendChild(cdelBtn);
   card.insertBefore(ctb, card.firstChild);
   card.addEventListener('mouseenter',function(){ ctb.style.opacity='1'; ctb.style.pointerEvents='all'; });
   card.addEventListener('mouseleave',function(ev){ if(!ev.relatedTarget||!card.contains(ev.relatedTarget)){ctb.style.opacity='0';ctb.style.pointerEvents='none';cbgPop.style.display='none';} });
@@ -2091,7 +2109,7 @@ function attachImgCapToolbar(item, parentEl, iDoc) {
   item.style.position = 'relative';
   var itb = iDoc.createElement('div');
   itb.setAttribute('data-paivita-imgcap-toolbar','true');
-  itb.style.cssText='position:absolute;top:4px;right:4px;z-index:99999;display:flex;gap:2px;align-items:center;background:rgba(255,255,255,0.97);border:1px solid rgba(30,91,181,0.2);border-radius:6px;padding:3px 4px;opacity:0;transition:opacity 0.15s;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.1);';
+  itb.style.cssText='position:absolute;top:4px;right:4px;z-index:99999;display:flex;gap:2px;align-items:center;background:rgba(255,255,255,0.97);border:1px solid rgba(30,91,181,0.2);border-radius:6px;padding:3px 4px;opacity:0;transition:opacity 0.05s;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.1);';
   var idelBtn=iDoc.createElement('button'); idelBtn.textContent='\u00d7'; idelBtn.title='Poista kuva';
   idelBtn.style.cssText='min-width:22px;height:22px;border:1px solid #fca5a5;border-radius:3px;background:#fee2e2;color:#b91c1c;font-size:11px;cursor:pointer;padding:0 3px;font-weight:700;';
   idelBtn.addEventListener('click',function(ev){ ev.stopPropagation(); item.remove(); notifyBlockUpdate(parentEl); });
@@ -2351,7 +2369,7 @@ function selectBlock(blockId) {
         const sc = getSiteColors(iDoc);
         const tb = iDoc.createElement('div');
         tb.setAttribute('data-paivita-block-toolbar','true');
-        tb.style.cssText='position:absolute;top:0;right:0;z-index:99999;display:flex;gap:3px;align-items:center;background:rgba(255,255,255,0.97);border:1px solid rgba(30,91,181,0.2);border-radius:0 0 0 8px;padding:4px 6px;opacity:0;transition:opacity 0.15s;pointer-events:none;box-shadow:-2px 2px 8px rgba(0,0,0,0.08);';
+        tb.style.cssText='position:absolute;top:0;right:0;z-index:99999;display:flex;gap:3px;align-items:center;background:rgba(255,255,255,0.97);border:1px solid rgba(30,91,181,0.2);border-radius:0 0 0 8px;padding:4px 6px;opacity:0;transition:opacity 0.05s;pointer-events:none;box-shadow:-2px 2px 8px rgba(0,0,0,0.08);';
         // Heading select
         const hSel = iDoc.createElement('select');
         hSel.title='Otsikon koko'; hSel.style.cssText='font-size:11px;padding:2px 4px;border:1px solid #e2e8f0;border-radius:4px;background:#fff;height:24px;font-weight:700;color:#1e5bb5;cursor:pointer;';
